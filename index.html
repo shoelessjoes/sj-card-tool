@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shoeless Joe's — Card Import Tool</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #0a0a0a;
+    color: #e2e2e2;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #111; }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  input, select, textarea {
+    background: #181818;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    color: #e2e2e2;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    outline: none;
+    padding: 7px 10px;
+    transition: border-color .15s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #f59e0b; }
+  input[type="checkbox"] {
+    width: 15px; height: 15px;
+    accent-color: #f59e0b;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.6); cursor: pointer; }
+  input[type="number"]::-webkit-inner-spin-button { opacity: .3; }
+  input[type="file"] { display: none; }
+
+  button {
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    padding: 7px 14px;
+    transition: background .15s, opacity .15s;
+  }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  .btn-amber  { background: #f59e0b; color: #000; }
+  .btn-amber:hover:not(:disabled)  { background: #fbbf24; }
+  .btn-green  { background: #15803d; color: #fff; }
+  .btn-green:hover:not(:disabled)  { background: #16a34a; }
+  .btn-ghost  { background: transparent; border: 1px solid #2e2e2e; color: #777; }
+  .btn-ghost:hover:not(:disabled)  { background: #1a1a1a; color: #bbb; border-color: #444; }
+  .btn-red    { background: transparent; border: 1px solid #3a1a1a; color: #f87171; }
+  .btn-red:hover:not(:disabled)    { background: #1f0e0e; }
+
+  .panel {
+    background: #111;
+    border: 1px solid #1e1e1e;
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .label {
+    color: #4a4a4a;
+    display: block;
+    font-size: 9px;
+    letter-spacing: .14em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
+  /* Card row */
+  .card-row {
+    align-items: center;
+    border-bottom: 1px solid #161616;
+    border-left: 3px solid transparent;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    padding: 9px 14px;
+    transition: background .1s, border-color .1s;
+    user-select: none;
+  }
+  .card-row:last-child { border-bottom: none; }
+  .card-row:hover { background: #161616; }
+  .card-row.selected { background: rgba(245,158,11,.06); border-left-color: #f59e0b; }
+  .card-row.pushed   { background: rgba(21,128,61,.05);  border-left-color: #15803d; cursor: default; }
+  .card-row.failed   { border-left-color: #dc2626; }
+  .card-row.pushing  { opacity: .7; cursor: default; }
+
+  /* Grade badges */
+  .grade { border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
+  .g10   { background: rgba(34,197,94,.15);  color: #4ade80; }
+  .g9    { background: rgba(245,158,11,.15); color: #f59e0b; }
+  .g8    { background: rgba(251,146,60,.15); color: #fb923c; }
+  .glow  { background: rgba(148,163,184,.12); color: #94a3b8; }
+
+  /* Status tags */
+  .tag { border-radius: 3px; flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .08em; padding: 2px 6px; white-space: nowrap; }
+  .tag-done  { background: rgba(34,197,94,.15);  color: #4ade80; }
+  .tag-fail  { background: rgba(239,68,68,.15);  color: #f87171; }
+  .tag-push  { background: rgba(96,165,250,.15); color: #60a5fa; }
+  .tag-ready { background: rgba(245,158,11,.15); color: #f59e0b; }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed #222;
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 50px 30px;
+    text-align: center;
+    transition: border-color .2s, background .2s;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: #f59e0b; background: rgba(245,158,11,.03); }
+
+  /* Tabs */
+  .tab-bar { border-bottom: 1px solid #1a1a1a; display: flex; padding-left: 16px; }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #444;
+    cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    padding: 11px 18px;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: #888; }
+  .tab-btn.active { border-bottom-color: #f59e0b; color: #f59e0b; }
+
+  /* Config overlay */
+  .overlay {
+    align-items: center;
+    background: rgba(0,0,0,.85);
+    bottom: 0; left: 0; right: 0; top: 0;
+    display: flex;
+    justify-content: center;
+    position: fixed;
+    z-index: 100;
+  }
+  .overlay-box {
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    max-width: 480px;
+    padding: 28px;
+    width: 90%;
+  }
+
+  /* Misc */
+  .monospace { font-family: 'Courier New', Courier, monospace; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .span2 { grid-column: 1 / -1; }
+  .muted { color: #444; }
+  .amber { color: #f59e0b; }
+  .green { color: #4ade80; }
+  .red   { color: #f87171; }
+  .preview-block {
+    background: #181818;
+    border: 1px solid #222;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+  }
+  .preview-row { display: flex; gap: 10px; align-items: flex-start; }
+  .preview-key { color: #333; font-size: 10px; flex-shrink: 0; width: 36px; padding-top: 1px; }
+  .preview-val { color: #ccc; font-size: 11px; line-height: 1.5; word-break: break-all; }
+  .preview-sku { color: #f59e0b; font-size: 13px; font-weight: 700; }
+
+  /* Settings gear */
+  .gear-btn {
+    align-items: center;
+    background: transparent;
+    border: 1px solid #222;
+    border-radius: 4px;
+    color: #444;
+    cursor: pointer;
+    display: flex;
+    font-size: 16px;
+    height: 32px;
+    justify-content: center;
+    padding: 0;
+    transition: color .15s, border-color .15s;
+    width: 32px;
+  }
+  .gear-btn:hover { color: #888; border-color: #444; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useRef, useCallback, useEffect } = React;
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+const TODAY = new Date().toISOString().split('T')[0];
+const LS = { // localStorage keys
+  ANTH:  'sj_anthropic_key',
+  PSA:   'sj_psa_token',
+  SHOP:  'sj_shopify_store',
+};
+const GRADERS = ['PSA','BGS','SGC','CGC','TAG','Other'];
+const SPORTS  = ['Baseball','Basketball','Football','Hockey','Soccer','Pokemon','Pop Culture','Entertainment','Multi-Sport','UFC/MMA','Other'];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const tc = s => !s ? '' : s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+const gNum = d => { const m = String(d||'').match(/(\d+\.?\d*)$/); return m ? m[1] : String(d||''); };
+const makeSKU = (date, cost) => {
+  if (!date || !cost) return '';
+  return date.replace(/-/g,'') + String(parseInt(cost)||0);
+};
+
+const SMAP = {
+  BASEBALL:['Baseball','Graded Baseball Card'], BASKETBALL:['Basketball','Graded Basketball Card'],
+  FOOTBALL:['Football','Graded Football Card'],  HOCKEY:['Hockey','Graded Hockey Card'],
+  SOCCER:['Soccer','Graded Soccer Card'],        POKEMON:['Pokemon','Graded Pokemon Card'],
+  TCG:['Pokemon','Graded Pokemon Card'],         ENTERTAINMENT:['Entertainment','Graded Entertainment Card'],
+  'POP CULTURE':['Pop Culture','Graded Pop Culture Card'], 'MULTI-SPORT':['Multi-Sport','Graded Multi-Sport Card'],
+  UFC:['UFC/MMA','Graded Entertainment Card'],
+};
+const getSport = cat => {
+  const u = (cat||'').toUpperCase();
+  for (const [k,v] of Object.entries(SMAP)) if (u.includes(k)) return v;
+  return ['Other','Graded Card'];
+};
+
+// Sport detection from raw description text
+const BBALL_NAMES = ['CURRY','FLAGG','EDWARDS','TATUM','DONCIC','JAMES','KOBE','BRYANT','GARNETT','BIRD','MAGIC JOHNSON','SHAQUILLE','O\'NEAL','JORDAN','PIPPEN','BARKLEY','EWING','ROBINSON','WESTBROOK','HARDEN','DURANT','LEONARD','GEORGE'];
+const FBALL_NAMES = ['MAHOMES','BRADY','BURROW','CHASE','JEFFERSON','STROUD','NABERS','HIGGINS','GOLDEN','HARRISON','KELCE','MANNING','BOWERS','MAYE','LAMAR','ALLEN','STAFFORD','RODGERS','FAVRE','MONTANA','MARINO','ELWAY','SANDERS'];
+const BSBAL_NAMES = ['OHTANI','GRIFFEY','RUTH','JUDGE','TROUT','ALONSO','JETER','RIPKEN','CLEMENTE','MANTLE','AARON','KOUFAX','MAYS','MUSIAL','MOOKIE','DEVERS','SOTO','TATIS','ACUNA','WITT'];
+const detectSport = desc => {
+  const u = (desc||'').toUpperCase();
+  if (u.includes('POKEMON')||u.includes(' TCG ')) return ['Pokemon','Graded Pokemon Card'];
+  if (u.includes('FIFA')||u.includes('UEFA')||u.includes(' MLS ')) return ['Soccer','Graded Soccer Card'];
+  if (u.includes('BASKETBALL')||BBALL_NAMES.some(p=>u.includes(p))) return ['Basketball','Graded Basketball Card'];
+  if (u.includes(' NFL ')||u.includes('FOOTBALL')||FBALL_NAMES.some(p=>u.includes(p))) return ['Football','Graded Football Card'];
+  if (u.includes(' MLB ')||u.includes('BASEBALL')||BSBAL_NAMES.some(p=>u.includes(p))) return ['Baseball','Graded Baseball Card'];
+  if (u.includes('NHL')||u.includes('HOCKEY')) return ['Hockey','Graded Hockey Card'];
+  return ['Other','Graded Card'];
+};
+
+const CLINKS = {
+  PSA:   c => `https://www.psacard.com/cert/${c}`,
+  BGS:   c => `https://www.beckett.com/gradingsubmission/pop/${String(c).padStart(11,'0')}`,
+  SGC:   c => `https://www.sgccard.com/cert/${c}`,
+  CGC:   c => `https://www.cgccards.com/certlookup/${c}`,
+  TAG:   () => `https://taggradingcard.com`,
+  Other: () => ``,
+};
+
+const gradeClass = n => {
+  const v = parseFloat(n);
+  if (v === 10) return 'g10';
+  if (v >= 9)   return 'g9';
+  if (v >= 7)   return 'g8';
+  return 'glow';
+};
+
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const parseLine = line => {
+    const r = []; let f = '', q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { q = !q; continue; }
+      if (c === ',' && !q) { r.push(f); f = ''; continue; }
+      f += c;
+    }
+    r.push(f);
+    return r;
+  };
+  const hdrs = parseLine(lines[0]).map(h => h.trim());
+  return lines.slice(1)
+    .map(l => {
+      const v = parseLine(l);
+      return Object.fromEntries(hdrs.map((h,i) => [h, (v[i]||'').trim()]));
+    })
+    .filter(r => Object.values(r).some(v => v));
+}
+
+// Build Shopify product title from PSA API data
+const buildTitle = (d, g='PSA') => {
+  const yr=d.Year||'', br=tc(d.Brand||''), sb=tc(d.Subject||''), va=tc(d.Variety||''), cn=d.CardNumber||'';
+  let gr;
+  if (d.IsDualCert) {
+    const cg=gNum(d.CardGrade), ag=d.AutographGrade==='Authentic'?'AUTH':gNum(d.AutographGrade);
+    gr=`${cg}/${ag}`;
+  } else gr = gNum(d.GradeDescription||'');
+  return [yr,br,sb,va||null,cn?`#${cn}`:null,g,gr].filter(Boolean).join(' ');
+};
+
+// Build title from CSV description (fallback)
+const titleFromDesc = (desc, gradeStr, g='PSA') =>
+  `${tc(desc)} ${g} ${gNum(gradeStr)}`;
+
+// ─── API Calls ────────────────────────────────────────────────────────────────
+async function fetchPSACert(certNum, psaToken) {
+  const h = { authorization: `bearer ${psaToken}` };
+  try {
+    const [dr, ir] = await Promise.all([
+      fetch(`https://api.psacard.com/publicapi/cert/GetByCertNumber/${certNum}`, { headers: h }),
+      fetch(`https://api.psacard.com/publicapi/cert/GetImagesByCertNumber/${certNum}`, { headers: h }),
+    ]);
+    if (!dr.ok) return { ok: false, error: `PSA ${dr.status}` };
+    const psa = (await dr.json()).PSACert;
+    const imgs = ir.ok ? await ir.json() : [];
+    const front = Array.isArray(imgs) ? imgs.find(i => i.IsFrontImage) : null;
+    return { ok: true, data: psa, image: front?.ImageURL || null };
+  } catch (e) {
+    return { ok: false, error: 'CORS blocked — using CSV data' };
+  }
+}
+
+async function createShopifyProduct(spec, anthropicKey) {
+  const prompt = `Create a Shopify draft product:
+Title: "${spec.title}"
+Vendor: "Shoeless Joe's"
+Type: "${spec.type}"
+Tags: ${JSON.stringify(spec.tags)}
+Status: DRAFT
+Price: "${spec.price||'0'}"
+SKU: "${spec.sku}"
+Options:[{"name":"Title","values":["Default Title"]}]
+Variant: taxable=false,weight=0oz,inventoryTracker=shopify,inventoryQty=1,inventoryPolicy=deny${spec.imageUrl?`\nImage:"${spec.imageUrl}"`:''}
+
+Then graphql_mutation to add metafields:
+custom.certification_number = "'${spec.certNum}" (single_line_text_field)
+custom.card_grade = "${spec.grade}" (single_line_text_field)
+custom.certification_link = "${spec.certLink}" (url)
+custom.date_acquired = "${spec.dateAcquired}" (date)
+
+End with: [R]{"success":true,"productId":"GID","title":"${spec.title.replace(/"/g,"'")}"}[/R]
+Or: [R]{"success":false,"error":"MSG"}[/R]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        mcp_servers: [{ type: 'url', url: 'https://setup.shopify.com/mcp', name: 'shopify' }],
+        system: 'Shopify product manager for a graded card shop. Create products exactly as specified. Always end with the [R] JSON tag.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const data = await res.json();
+    if (data.error) return { success: false, error: data.error.message || 'API error' };
+    const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const m = txt.match(/\[R\]([\s\S]*?)\[\/R\]/);
+    if (m) { try { return JSON.parse(m[1].trim()); } catch(e) {} }
+    // Fallback: find GID in tool results
+    for (const b of (data.content||[])) {
+      if (b.type === 'mcp_tool_result') {
+        const t = b.content?.[0]?.text || '';
+        const g = t.match(/gid:\/\/shopify\/Product\/\d+/);
+        if (g) return { success: true, productId: g[0], title: spec.title };
+      }
+    }
+    return { success: false, error: 'No result — check Shopify drafts' };
+  } catch(e) {
+    return { success: false, error: String(e) };
+  }
+}
+
+// ─── Settings Modal ───────────────────────────────────────────────────────────
+function SettingsModal({ onClose, onSave, defaults }) {
+  const [anthKey,  setAnthKey]  = useState(defaults.anthKey  || '');
+  const [psaTok,   setPsaTok]   = useState(defaults.psaTok   || '');
+  const [showAnth, setShowAnth] = useState(false);
+  const [showPsa,  setShowPsa]  = useState(false);
+  const save = () => {
+    localStorage.setItem(LS.ANTH, anthKey);
+    localStorage.setItem(LS.PSA,  psaTok);
+    onSave({ anthKey, psaTok });
+    onClose();
+  };
+  return (
+    <div className="overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
+      <div className="overlay-box">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+          <div>
+            <div style={{color:'#f59e0b',fontWeight:700,fontSize:14,letterSpacing:'.1em'}}>CONFIGURATION</div>
+            <div style={{color:'#333',fontSize:10,marginTop:2}}>Stored locally in your browser</div>
+          </div>
+          <button className="btn-ghost" style={{padding:'4px 10px'}} onClick={onClose}>✕</button>
+        </div>
+        <div className="col">
+          <div>
+            <label className="label">Anthropic API Key — required for Shopify push</label>
+            <div className="row">
+              <input type={showAnth?'text':'password'} value={anthKey} onChange={e=>setAnthKey(e.target.value)} placeholder="sk-ant-..."/>
+              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setShowAnth(!showAnth)}>{showAnth?'HIDE':'SHOW'}</button>
+            </div>
+            <div style={{color:'#333',fontSize:10,marginTop:5}}>Get yours at console.anthropic.com · ~$0.01–0.05 per card pushed</div>
+          </div>
+          <div>
+            <label className="label">PSA API Token — optional, enables image + structured data</label>
+            <div className="row">
+              <input type={showPsa?'text':'password'} value={psaTok} onChange={e=>setPsaTok(e.target.value)} placeholder="psacard.com/publicapi"/>
+              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setShowPsa(!showPsa)}>{showPsa?'HIDE':'SHOW'}</button>
+            </div>
+            <div style={{color:'#333',fontSize:10,marginTop:5}}>Without this the tool uses CSV data only — no images, no cert verification</div>
+          </div>
+          <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4}}>
+            <button className="btn-ghost" onClick={onClose}>CANCEL</button>
+            <button className="btn-amber" onClick={save}>SAVE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+function App() {
+  // Config
+  const [anthKey,  setAnthKey]  = useState(() => localStorage.getItem(LS.ANTH) || '');
+  const [psaTok,   setPsaTok]   = useState(() => localStorage.getItem(LS.PSA)  || '');
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Tabs
+  const [tab, setTab] = useState('batch');
+
+  // Batch state
+  const [csvCards,  setCsvCards]  = useState(null);
+  const [batchDate, setBatchDate] = useState(TODAY);
+  const [bulkCost,  setBulkCost]  = useState('');
+  const [pushing,   setPushing]   = useState(false);
+  const [dragging,  setDragging]  = useState(false);
+  const fileRef = useRef();
+
+  // One-off state
+  const [grader,     setGrader]     = useState('PSA');
+  const [ooCert,     setOoCert]     = useState('');
+  const [ooLooking,  setOoLooking]  = useState(false);
+  const [ooData,     setOoData]     = useState(null);
+  const [ooCost,     setOoCost]     = useState('');
+  const [ooDate,     setOoDate]     = useState(TODAY);
+  const [ooCreating, setOoCreating] = useState(false);
+  const [ooResult,   setOoResult]   = useState(null);
+  const [manual,     setManual]     = useState({ year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball' });
+  const [showManual, setShowManual] = useState(false);
+
+  // ── CSV load ──
+  const loadFile = useCallback(file => {
+    if (!file || !file.name.endsWith('.csv')) return;
+    const r = new FileReader();
+    r.onload = e => {
+      const rows = parseCSV(e.target.result);
+      const certKey  = Object.keys(rows[0]||{}).find(k => /cert/i.test(k));
+      const descKey  = Object.keys(rows[0]||{}).find(k => /desc/i.test(k));
+      const gradeKey = Object.keys(rows[0]||{}).find(k => /grade/i.test(k));
+      if (!certKey) { alert('Could not find Cert # column. Is this a PSA order CSV?'); return; }
+      setCsvCards(rows.map((r,i) => ({
+        id: i,
+        certNum:  String(r[certKey]||'').replace(/'/g,'').trim(),
+        desc:     String(r[descKey]||r['Description']||'').trim(),
+        gradeRaw: String(r[gradeKey]||r['Grade']||'').trim(),
+        checked: false, cost: '',
+        status: 'idle', error: null, shopifyId: null,
+      })));
+    };
+    r.readAsText(file);
+  }, []);
+
+  const onDrop = e => {
+    e.preventDefault(); setDragging(false);
+    loadFile(e.dataTransfer.files[0]);
+  };
+
+  // ── Batch selection ──
+  const idleCards     = csvCards ? csvCards.filter(c => c.status==='idle') : [];
+  const checkedCount  = csvCards ? csvCards.filter(c => c.checked && c.status==='idle').length : 0;
+  const pushedCount   = csvCards ? csvCards.filter(c => c.status==='pushed').length : 0;
+  const allChecked    = idleCards.length > 0 && idleCards.every(c => c.checked);
+
+  const toggleAll  = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:!allChecked} : c));
+  const clearSel   = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:false} : c));
+  const toggleRow  = i  => { if (csvCards[i].status!=='idle') return; setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, checked:!c.checked})); };
+  const setCardCost = (i,v) => setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, cost:v}));
+  const applyBulk  = () => {
+    if (!bulkCost) return;
+    setCsvCards(p => p.map(c => c.checked&&c.status==='idle' ? {...c, cost:bulkCost} : c));
+  };
+
+  // ── Batch push ──
+  const pushSelected = async () => {
+    if (!anthKey) { setShowSettings(true); return; }
+    const todo = csvCards.filter(c => c.checked && c.status==='idle');
+    if (!todo.length) return;
+    setPushing(true);
+    for (const card of todo) {
+      setCsvCards(p => p.map(c => c.id===card.id ? {...c, status:'pushing'} : c));
+      // Try PSA API
+      let title, type, sport, grade, imageUrl = null;
+      const apiRes = psaTok ? await fetchPSACert(card.certNum, psaTok) : { ok: false };
+      if (apiRes.ok && apiRes.data) {
+        const d = apiRes.data;
+        [sport, type] = getSport(d.Category);
+        grade = d.IsDualCert
+          ? `${gNum(d.CardGrade)}/${d.AutographGrade==='Authentic'?'AUTH':gNum(d.AutographGrade)}`
+          : gNum(d.GradeDescription);
+        title    = buildTitle(d, 'PSA');
+        imageUrl = apiRes.image;
+      } else {
+        [sport, type] = detectSport(card.desc);
+        grade = gNum(card.gradeRaw);
+        title = titleFromDesc(card.desc, card.gradeRaw, 'PSA');
+      }
+      const sku = makeSKU(batchDate, card.cost);
+      const result = await createShopifyProduct({
+        title, type, tags: [sport,'PSA','Graded'].sort(),
+        price: card.cost||'0', sku,
+        certNum: card.certNum, grade,
+        certLink: CLINKS.PSA(card.certNum),
+        dateAcquired: batchDate, imageUrl,
+      }, anthKey);
+      setCsvCards(p => p.map(c => c.id===card.id ? {
+        ...c,
+        status: result.success ? 'pushed' : 'failed',
+        error: result.error || null,
+        shopifyId: result.productId || null,
+      } : c));
+    }
+    setPushing(false);
+  };
+
+  // ── One-off ──
+  const lookup = async () => {
+    if (!ooCert) return;
+    if (!psaTok) { alert('Add your PSA API token in Settings first.'); return; }
+    setOoLooking(true); setOoData(null); setOoResult(null);
+    const r = await fetchPSACert(ooCert, psaTok);
+    if (r.ok) { setOoData({...r.data, _image: r.image}); setShowManual(false); }
+    else       { setOoData({_error: r.error, _manual: true}); setShowManual(true); }
+    setOoLooking(false);
+  };
+
+  const createOne = async () => {
+    if (!anthKey) { setShowSettings(true); return; }
+    setOoCreating(true); setOoResult(null);
+    let title, type, sport, grade;
+    const g = grader;
+    if (ooData && !ooData._manual) {
+      [sport, type] = getSport(ooData.Category);
+      grade = ooData.IsDualCert
+        ? `${gNum(ooData.CardGrade)}/${ooData.AutographGrade==='Authentic'?'AUTH':gNum(ooData.AutographGrade)}`
+        : gNum(ooData.GradeDescription);
+      title = buildTitle(ooData, g);
+    } else {
+      [sport, type] = getSport(manual.sport + ' CARDS');
+      grade = manual.grade;
+      title = [manual.year,tc(manual.set),tc(manual.player),tc(manual.variation)||null,manual.cardNumber?`#${manual.cardNumber}`:null,g,grade].filter(Boolean).join(' ');
+    }
+    const cl  = (CLINKS[g]||CLINKS.Other)(ooCert);
+    const sku = makeSKU(ooDate, ooCost);
+    const result = await createShopifyProduct({
+      title, type, tags: [sport,g,'Graded'].sort(),
+      price: ooCost||'0', sku,
+      certNum: ooCert, grade, certLink: cl,
+      dateAcquired: ooDate, imageUrl: ooData?._image||null,
+    }, anthKey);
+    setOoResult(result);
+    setOoCreating(false);
+    if (result.success) {
+      setOoCert(''); setOoData(null); setOoCost(''); setOoDate(TODAY);
+      setManual({year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball'});
+      setShowManual(false);
+    }
+  };
+
+  // ── Derived (one-off) ──
+  const ooTitle = ooData&&!ooData._manual
+    ? buildTitle(ooData, grader)
+    : showManual
+      ? [manual.year,tc(manual.set),tc(manual.player),tc(manual.variation)||null,manual.cardNumber?`#${manual.cardNumber}`:null,grader,manual.grade].filter(Boolean).join(' ')
+      : '';
+  const ooSKU   = makeSKU(ooDate, ooCost);
+  const ooReady = ooCert && ooCost && ooDate &&
+    ((ooData&&!ooData._manual)||(showManual&&manual.year&&manual.set&&manual.player&&manual.grade));
+
+  const lbl = { color:'#4a4a4a', display:'block', fontSize:'9px', letterSpacing:'.14em', marginBottom:5, textTransform:'uppercase' };
+  const inp = { background:'#181818', border:'1px solid #2a2a2a', borderRadius:4, color:'#e2e2e2', fontFamily:"'Courier New',Courier,monospace", fontSize:12, outline:'none', padding:'7px 10px', width:'100%' };
+
+  return (
+    <>
+    {showSettings && (
+      <SettingsModal
+        defaults={{ anthKey, psaTok }}
+        onClose={() => setShowSettings(false)}
+        onSave={({ anthKey: a, psaTok: p }) => { setAnthKey(a); setPsaTok(p); }}
+      />
+    )}
+
+    {/* ── Header ── */}
+    <div style={{borderBottom:'1px solid #181818',padding:'10px 20px',display:'flex',alignItems:'center',gap:12}}>
+      <div style={{flex:1}}>
+        <div style={{color:'#f59e0b',fontWeight:700,fontSize:15,letterSpacing:'.12em'}}>SHOELESS JOE'S</div>
+        <div style={{color:'#2a2a2a',fontSize:10,letterSpacing:'.18em',marginTop:1}}>CARD IMPORT TOOL</div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8}}>
+        {/* Status dots */}
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:6,height:6,borderRadius:'50%',background:anthKey?'#f59e0b':'#222'}} title={anthKey?'Anthropic API key set':'No API key'}/>
+          <div style={{width:6,height:6,borderRadius:'50%',background:psaTok?'#4ade80':'#222'}} title={psaTok?'PSA token set':'No PSA token'}/>
+        </div>
+        <button className="gear-btn" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
+      </div>
+    </div>
+
+    {/* ── Tabs ── */}
+    <div className="tab-bar">
+      {[['batch','⬡  PSA ORDER'],['oneoff','◈  QUICK ADD']].map(([t,l]) => (
+        <button key={t} className={`tab-btn${tab===t?' active':''}`} onClick={() => setTab(t)}>{l}</button>
+      ))}
+    </div>
+
+    <div style={{padding:16, maxWidth:1100, margin:'0 auto'}}>
+
+    {/* ════════ BATCH TAB ════════ */}
+    {tab==='batch' && (<div className="col">
+
+      {/* Drop zone */}
+      {!csvCards && (
+        <div style={{maxWidth:520, margin:'20px auto'}}>
+          <div
+            className={`dropzone${dragging?' drag':''}`}
+            onDragOver={e=>{e.preventDefault();setDragging(true)}}
+            onDragLeave={()=>setDragging(false)}
+            onDrop={onDrop}
+            onClick={() => fileRef.current.click()}
+          >
+            <input ref={fileRef} type="file" accept=".csv" onChange={e=>loadFile(e.target.files[0])}/>
+            <div style={{fontSize:32,marginBottom:14,color:dragging?'#f59e0b':'#2a2a2a'}}>↑</div>
+            <div style={{color:dragging?'#f59e0b':'#555',fontWeight:700,letterSpacing:'.1em',marginBottom:8}}>DROP PSA ORDER CSV</div>
+            <div style={{color:'#2e2e2e',fontSize:11}}>or click to browse &nbsp;·&nbsp; download from psacard.com order lookup</div>
+          </div>
+          {!anthKey && (
+            <div style={{marginTop:12,padding:'10px 14px',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.15)',borderRadius:6,fontSize:11,color:'#8a6a20',textAlign:'center'}}>
+              ⚠ &nbsp; Add your Anthropic API key in <button onClick={()=>setShowSettings(true)} style={{background:'transparent',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> before pushing to Shopify
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cards loaded */}
+      {csvCards && (<>
+
+        {/* Controls */}
+        <div className="panel" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <button className="btn-ghost" onClick={toggleAll} style={{fontSize:10}}>
+            {allChecked && idleCards.length>0 ? 'DESELECT ALL' : 'SELECT ALL'}
+          </button>
+          {checkedCount>0 && <button className="btn-ghost" onClick={clearSel} style={{fontSize:10}}>CLEAR</button>}
+          <div style={{display:'flex',gap:10,fontSize:12}}>
+            <span className="amber">{checkedCount} selected</span>
+            {pushedCount>0 && <span className="green">{pushedCount} pushed</span>}
+            <span className="muted">{csvCards.length} total</span>
+          </div>
+          <div style={{flex:1}}/>
+          <button className="btn-ghost" style={{fontSize:10}} onClick={()=>setCsvCards(null)}>↑ NEW FILE</button>
+        </div>
+
+        {/* Date + bulk cost */}
+        <div className="panel" style={{display:'flex',alignItems:'flex-end',gap:12,flexWrap:'wrap'}}>
+          <div>
+            <span style={lbl}>Date acquired — applies to all cards</span>
+            <input type="date" value={batchDate} onChange={e=>setBatchDate(e.target.value)} style={{...inp,width:170}}/>
+          </div>
+          <div>
+            <span style={lbl}>Bulk cost — apply to selected</span>
+            <div className="row">
+              <input type="number" step="1" min="0" value={bulkCost} onChange={e=>setBulkCost(e.target.value)} placeholder="100" style={{...inp,width:110}}/>
+              <button className="btn-ghost" style={{flexShrink:0,padding:'7px 12px',fontSize:10}} onClick={applyBulk}>APPLY</button>
+            </div>
+          </div>
+          <div style={{flex:1}}/>
+          <button
+            className="btn-green"
+            disabled={pushing || checkedCount===0}
+            onClick={pushSelected}
+            style={{padding:'8px 18px',fontSize:12}}
+          >
+            {pushing ? 'PUSHING…' : `PUSH ${checkedCount} → SHOPIFY`}
+          </button>
+        </div>
+
+        {/* Card list */}
+        <div className="panel" style={{padding:0,overflow:'hidden'}}>
+          {csvCards.map((card, i) => {
+            const gradeN   = gNum(card.gradeRaw);
+            const sku      = card.cost && batchDate ? makeSKU(batchDate, card.cost) : '';
+            const isPushed = card.status==='pushed';
+            const isFailed = card.status==='failed';
+            const isPush   = card.status==='pushing';
+            return (
+              <div
+                key={card.id}
+                className={`card-row${card.checked?' selected':''}${isPushed?' pushed':''}${isFailed?' failed':''}${isPush?' pushing':''}`}
+                onClick={() => toggleRow(i)}
+              >
+                <input
+                  type="checkbox"
+                  checked={card.checked || isPushed}
+                  onChange={() => toggleRow(i)}
+                  onClick={e => e.stopPropagation()}
+                  disabled={card.status!=='idle'}
+                />
+
+                {/* Cert # */}
+                <span style={{color:'#383838',fontSize:10,width:80,flexShrink:0}}>{card.certNum}</span>
+
+                {/* Description */}
+                <span style={{flex:1,fontSize:12,color:card.checked||isPushed?'#d4d4d4':'#484848',lineHeight:1.4,minWidth:0}}>
+                  {tc(card.desc)}
+                  {isPushed && card.shopifyId && <span style={{color:'#15803d',fontSize:9,display:'block',marginTop:2}}>{card.shopifyId}</span>}
+                  {isFailed && <span style={{color:'#dc2626',fontSize:9,display:'block',marginTop:2}}>{card.error}</span>}
+                  {isPush   && <span style={{color:'#3b82f6',fontSize:9,display:'block',marginTop:2}}>Creating in Shopify…</span>}
+                </span>
+
+                {/* Grade */}
+                <span className={`grade ${gradeClass(gradeN)}`}>{gradeN}</span>
+
+                {/* Cost input (selected idle only) */}
+                {card.checked && card.status==='idle' && (
+                  <div className="row" onClick={e=>e.stopPropagation()} style={{flexShrink:0,gap:4}}>
+                    <span style={{color:'#444',fontSize:11}}>$</span>
+                    <input
+                      type="number" step="1" min="0"
+                      value={card.cost}
+                      onChange={e=>setCardCost(i,e.target.value)}
+                      placeholder="cost"
+                      style={{...inp,width:72,padding:'4px 7px',fontSize:11}}
+                    />
+                  </div>
+                )}
+
+                {/* SKU preview */}
+                {card.checked && card.status==='idle' && sku && (
+                  <span style={{color:'#b45309',fontSize:10,flexShrink:0,width:130,textAlign:'right',fontFamily:"'Courier New',Courier,monospace"}}>{sku}</span>
+                )}
+
+                {/* Status tags */}
+                {isPushed && <span className="tag tag-done">DONE</span>}
+                {isFailed && <span className="tag tag-fail">FAIL</span>}
+                {isPush   && <span className="tag tag-push">PUSH…</span>}
+              </div>
+            );
+          })}
+        </div>
+      </>)}
+    </div>)}
+
+    {/* ════════ QUICK ADD TAB ════════ */}
+    {tab==='oneoff' && (
+    <div className="col" style={{maxWidth:560}}>
+
+      {ooResult?.success && (
+        <div style={{padding:'12px 16px',background:'rgba(21,128,61,.1)',border:'1px solid rgba(21,128,61,.25)',borderRadius:6}}>
+          <div className="green" style={{fontWeight:700,fontSize:12,marginBottom:4}}>✓ DRAFT CREATED IN SHOPIFY</div>
+          <div style={{color:'#166534',fontSize:11}}>{ooResult.title}</div>
+          {ooResult.productId && <div style={{color:'rgba(21,128,61,.5)',fontSize:10,marginTop:2,fontFamily:'monospace'}}>{ooResult.productId}</div>}
+        </div>
+      )}
+
+      {/* Grader */}
+      <div className="panel">
+        <span style={lbl}>Grading company</span>
+        <div className="row" style={{flexWrap:'wrap',gap:6}}>
+          {GRADERS.map(g => (
+            <button
+              key={g}
+              style={{
+                background: grader===g ? '#f59e0b' : 'transparent',
+                border: grader===g ? 'none' : '1px solid #2a2a2a',
+                color: grader===g ? '#000' : '#555',
+                padding:'5px 14px',
+              }}
+              onClick={() => { setGrader(g); setOoData(null); setOoResult(null); setShowManual(g!=='PSA'); }}
+            >{g}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Cert # */}
+      <div className="panel col">
+        <div>
+          <span style={lbl}>Cert number</span>
+          <div className="row">
+            <input
+              value={ooCert}
+              onChange={e=>{setOoCert(e.target.value);setOoData(null);setOoResult(null);}}
+              onKeyDown={e=>e.key==='Enter'&&grader==='PSA'&&lookup()}
+              placeholder="e.g. 145531087"
+            />
+            {grader==='PSA' && (
+              <button className="btn-amber" disabled={ooLooking||!ooCert||!psaTok} onClick={lookup} style={{flexShrink:0}}>
+                {ooLooking?'…':'LOOKUP'}
+              </button>
+            )}
+            {grader!=='PSA' && (
+              <button className="btn-ghost" style={{flexShrink:0}} onClick={()=>setShowManual(true)}>ENTER</button>
+            )}
+          </div>
+          {!psaTok && grader==='PSA' && (
+            <div style={{color:'#555',fontSize:10,marginTop:5}}>
+              Add PSA token in <button onClick={()=>setShowSettings(true)} style={{background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> to enable cert lookup
+            </div>
+          )}
+        </div>
+
+        {/* PSA API result */}
+        {ooData && !ooData._manual && (
+          <div style={{display:'flex',gap:12,background:'#181818',borderRadius:5,padding:10}}>
+            {ooData._image && <img src={ooData._image} alt="" style={{width:40,height:56,objectFit:'cover',borderRadius:3,border:'1px solid #222',flexShrink:0}}/>}
+            <div className="col" style={{gap:4}}>
+              <div style={{color:'#ddd',fontWeight:700,fontSize:12,lineHeight:1.4}}>{buildTitle(ooData,grader)}</div>
+              <div style={{color:'#444',fontSize:10}}>{ooData.Category}</div>
+              <div className="row" style={{gap:10,fontSize:11}}>
+                <span className={`grade ${gradeClass(gNum(ooData.GradeDescription))}`}>{ooData.GradeDescription}</span>
+                {ooData.IsDualCert && <span style={{color:'#555'}}>AUTO: {ooData.AutographGrade}</span>}
+              </div>
+              <div style={{color:'#333',fontSize:10}}>Pop: {ooData.TotalPopulation} total · {ooData.PopulationHigher} higher</div>
+            </div>
+          </div>
+        )}
+        {ooData?._error && (
+          <div style={{color:'#f87171',fontSize:11,background:'rgba(239,68,68,.07)',borderRadius:4,padding:'6px 10px'}}>{ooData._error}</div>
+        )}
+      </div>
+
+      {/* Manual form */}
+      {(showManual||ooData?._manual) && (
+        <div className="panel col">
+          <span style={lbl}>Card details</span>
+          <div className="grid2">
+            <div><span style={lbl}>Year</span><input value={manual.year} onChange={e=>setManual(m=>({...m,year:e.target.value}))} placeholder="1998"/></div>
+            <div><span style={lbl}>Card number</span><input value={manual.cardNumber} onChange={e=>setManual(m=>({...m,cardNumber:e.target.value}))} placeholder="94"/></div>
+            <div className="span2"><span style={lbl}>Set / Brand</span><input value={manual.set} onChange={e=>setManual(m=>({...m,set:e.target.value}))} placeholder="Topps Chrome"/></div>
+            <div className="span2"><span style={lbl}>Player / Subject</span><input value={manual.player} onChange={e=>setManual(m=>({...m,player:e.target.value}))} placeholder="Carl Pickens"/></div>
+            <div className="span2"><span style={lbl}>Variation</span><input value={manual.variation} onChange={e=>setManual(m=>({...m,variation:e.target.value}))} placeholder="Refractor"/></div>
+            <div><span style={lbl}>Grade</span><input value={manual.grade} onChange={e=>setManual(m=>({...m,grade:e.target.value}))} placeholder="9"/></div>
+            <div><span style={lbl}>Sport</span><select value={manual.sport} onChange={e=>setManual(m=>({...m,sport:e.target.value}))}>{SPORTS.map(s=><option key={s}>{s}</option>)}</select></div>
+          </div>
+        </div>
+      )}
+
+      {/* Cost / Date / Preview / Create */}
+      {(ooData||showManual) && (
+        <div className="panel col">
+          <div className="grid2">
+            <div><span style={lbl}>Date acquired</span><input type="date" value={ooDate} onChange={e=>setOoDate(e.target.value)}/></div>
+            <div><span style={lbl}>Cost ($)</span><input type="number" step="1" min="0" value={ooCost} onChange={e=>setOoCost(e.target.value)} placeholder="100"/></div>
+          </div>
+
+          {(ooTitle||ooSKU) && (
+            <div className="preview-block">
+              {ooTitle && <div className="preview-row"><span className="preview-key">TITLE</span><span className="preview-val">{ooTitle}</span></div>}
+              {ooSKU   && <div className="preview-row"><span className="preview-key">SKU</span><span className="preview-val preview-sku">{ooSKU}</span></div>}
+              {ooCert  && <div className="preview-row"><span className="preview-key">CERT</span><span className="preview-val muted">{(CLINKS[grader]||CLINKS.Other)(ooCert)}</span></div>}
+            </div>
+          )}
+
+          <button className="btn-green" disabled={ooCreating||!ooReady} onClick={createOne} style={{width:'100%',padding:'10px',fontSize:12}}>
+            {ooCreating ? 'CREATING IN SHOPIFY…' : 'CREATE DRAFT IN SHOPIFY →'}
+          </button>
+
+          {ooResult && !ooResult.success && (
+            <div style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',borderRadius:4,padding:'8px 12px'}}>
+              <div className="red" style={{fontWeight:700,fontSize:11,marginBottom:3}}>✗ ERROR</div>
+              <div className="red" style={{fontSize:11}}>{ooResult.error}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>)}
+
+    </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
