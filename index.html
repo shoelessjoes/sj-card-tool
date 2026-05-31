@@ -80,7 +80,6 @@
     text-transform: uppercase;
   }
 
-  /* Card row */
   .card-row {
     align-items: center;
     border-bottom: 1px solid #161616;
@@ -99,21 +98,18 @@
   .card-row.failed   { border-left-color: #dc2626; }
   .card-row.pushing  { opacity: .7; cursor: default; }
 
-  /* Grade badges */
   .grade { border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
   .g10   { background: rgba(34,197,94,.15);  color: #4ade80; }
   .g9    { background: rgba(245,158,11,.15); color: #f59e0b; }
   .g8    { background: rgba(251,146,60,.15); color: #fb923c; }
   .glow  { background: rgba(148,163,184,.12); color: #94a3b8; }
 
-  /* Status tags */
   .tag { border-radius: 3px; flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .08em; padding: 2px 6px; white-space: nowrap; }
   .tag-done  { background: rgba(34,197,94,.15);  color: #4ade80; }
   .tag-fail  { background: rgba(239,68,68,.15);  color: #f87171; }
   .tag-push  { background: rgba(96,165,250,.15); color: #60a5fa; }
   .tag-ready { background: rgba(245,158,11,.15); color: #f59e0b; }
 
-  /* Drop zone */
   .dropzone {
     border: 2px dashed #222;
     border-radius: 8px;
@@ -124,7 +120,6 @@
   }
   .dropzone:hover, .dropzone.drag { border-color: #f59e0b; background: rgba(245,158,11,.03); }
 
-  /* Tabs */
   .tab-bar { border-bottom: 1px solid #1a1a1a; display: flex; padding-left: 16px; }
   .tab-btn {
     background: transparent;
@@ -142,7 +137,6 @@
   .tab-btn:hover { color: #888; }
   .tab-btn.active { border-bottom-color: #f59e0b; color: #f59e0b; }
 
-  /* Config overlay */
   .overlay {
     align-items: center;
     background: rgba(0,0,0,.85);
@@ -161,7 +155,6 @@
     width: 90%;
   }
 
-  /* Misc */
   .monospace { font-family: 'Courier New', Courier, monospace; }
   .row { display: flex; align-items: center; gap: 8px; }
   .col { display: flex; flex-direction: column; gap: 12px; }
@@ -185,7 +178,6 @@
   .preview-val { color: #ccc; font-size: 11px; line-height: 1.5; word-break: break-all; }
   .preview-sku { color: #f59e0b; font-size: 13px; font-weight: 700; }
 
-  /* Settings gear */
   .gear-btn {
     align-items: center;
     background: transparent;
@@ -212,10 +204,9 @@ const { useState, useRef, useCallback, useEffect } = React;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TODAY = new Date().toISOString().split('T')[0];
-const LS = { // localStorage keys
-  ANTH:  'sj_anthropic_key',
-  PSA:   'sj_psa_token',
-  SHOP:  'sj_shopify_store',
+const LS = {
+  PSA:    'sj_psa_token',
+  WORKER: 'sj_worker_url',
 };
 const GRADERS = ['PSA','BGS','SGC','CGC','TAG','Other'];
 const SPORTS  = ['Baseball','Basketball','Football','Hockey','Soccer','Pokemon','Pop Culture','Entertainment','Multi-Sport','UFC/MMA','Other'];
@@ -242,7 +233,6 @@ const getSport = cat => {
   return ['Other','Graded Card'];
 };
 
-// Sport detection from raw description text
 const BBALL_NAMES = ['CURRY','FLAGG','EDWARDS','TATUM','DONCIC','JAMES','KOBE','BRYANT','GARNETT','BIRD','MAGIC JOHNSON','SHAQUILLE','O\'NEAL','JORDAN','PIPPEN','BARKLEY','EWING','ROBINSON','WESTBROOK','HARDEN','DURANT','LEONARD','GEORGE'];
 const FBALL_NAMES = ['MAHOMES','BRADY','BURROW','CHASE','JEFFERSON','STROUD','NABERS','HIGGINS','GOLDEN','HARRISON','KELCE','MANNING','BOWERS','MAYE','LAMAR','ALLEN','STAFFORD','RODGERS','FAVRE','MONTANA','MARINO','ELWAY','SANDERS'];
 const BSBAL_NAMES = ['OHTANI','GRIFFEY','RUTH','JUDGE','TROUT','ALONSO','JETER','RIPKEN','CLEMENTE','MANTLE','AARON','KOUFAX','MAYS','MUSIAL','MOOKIE','DEVERS','SOTO','TATIS','ACUNA','WITT'];
@@ -298,7 +288,6 @@ function parseCSV(text) {
     .filter(r => Object.values(r).some(v => v));
 }
 
-// Build Shopify product title from PSA API data
 const buildTitle = (d, g='PSA') => {
   const yr=d.Year||'', br=tc(d.Brand||''), sb=tc(d.Subject||''), va=tc(d.Variety||''), cn=d.CardNumber||'';
   let gr;
@@ -309,92 +298,89 @@ const buildTitle = (d, g='PSA') => {
   return [yr,br,sb,va||null,cn?`#${cn}`:null,g,gr].filter(Boolean).join(' ');
 };
 
-// Build title from CSV description (fallback)
 const titleFromDesc = (desc, gradeStr, g='PSA') =>
   `${tc(desc)} ${g} ${gNum(gradeStr)}`;
 
-// ─── API Calls ────────────────────────────────────────────────────────────────
-async function fetchPSACert(certNum, psaToken) {
-  const h = { authorization: `bearer ${psaToken}` };
+// ─── API Calls — all through Worker ──────────────────────────────────────────
+async function fetchPSACert(certNum, workerUrl) {
   try {
     const [dr, ir] = await Promise.all([
-      fetch(`https://api.psacard.com/publicapi/cert/GetByCertNumber/${certNum}`, { headers: h }),
-      fetch(`https://api.psacard.com/publicapi/cert/GetImagesByCertNumber/${certNum}`, { headers: h }),
+      fetch(`${workerUrl}/psa/cert/${certNum}`),
+      fetch(`${workerUrl}/psa/images/${certNum}`),
     ]);
     if (!dr.ok) return { ok: false, error: `PSA ${dr.status}` };
-    const psa = (await dr.json()).PSACert;
-    const imgs = ir.ok ? await ir.json() : [];
-    const front = Array.isArray(imgs) ? imgs.find(i => i.IsFrontImage) : null;
-    return { ok: true, data: psa, image: front?.ImageURL || null };
+    const body = await dr.json();
+    const psa  = body.PSACert;
+    if (!psa)  return { ok: false, error: 'No cert data returned' };
+    const imgs = ir.ok ? await ir.json() : {};
+    const front = imgs.front || null;
+    const back  = imgs.back  || null;
+    return { ok: true, data: psa, image: front, imageBack: back };
   } catch (e) {
-    return { ok: false, error: 'CORS blocked — using CSV data' };
+    return { ok: false, error: String(e) };
   }
 }
 
-async function createShopifyProduct(spec, anthropicKey) {
-  const prompt = `Create a Shopify draft product:
-Title: "${spec.title}"
-Vendor: "Shoeless Joe's"
-Type: "${spec.type}"
-Tags: ${JSON.stringify(spec.tags)}
-Status: DRAFT
-Price: "${spec.price||'0'}"
-SKU: "${spec.sku}"
-Options:[{"name":"Title","values":["Default Title"]}]
-Variant: taxable=false,weight=0oz,inventoryTracker=shopify,inventoryQty=1,inventoryPolicy=deny${spec.imageUrl?`\nImage:"${spec.imageUrl}"`:''}
-
-Then graphql_mutation to add metafields:
-custom.certification_number = "'${spec.certNum}" (single_line_text_field)
-custom.card_grade = "${spec.grade}" (single_line_text_field)
-custom.certification_link = "${spec.certLink}" (url)
-custom.date_acquired = "${spec.dateAcquired}" (date)
-
-End with: [R]{"success":true,"productId":"GID","title":"${spec.title.replace(/"/g,"'")}"}[/R]
-Or: [R]{"success":false,"error":"MSG"}[/R]`;
-
+async function createShopifyProduct(spec, workerUrl) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(`${workerUrl}/shopify/product`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        mcp_servers: [{ type: 'url', url: 'https://setup.shopify.com/mcp', name: 'shopify' }],
-        system: 'Shopify product manager for a graded card shop. Create products exactly as specified. Always end with the [R] JSON tag.',
-        messages: [{ role: 'user', content: prompt }],
+        certNumber:    spec.certNum,
+        year:          spec.year        || '',
+        set:           spec.set         || '',
+        playerName:    spec.playerName  || '',
+        variation:     spec.variation   || '',
+        cardNumber:    spec.cardNumber  || '',
+        grader:        spec.grader      || 'PSA',
+        grade:         spec.grade       || '',
+        isDualCert:    spec.isDualCert  || false,
+        autographGrade:spec.autographGrade || null,
+        category:      spec.category    || '',
+        cost:          spec.cost        || '0',
+        dateAcquired:  spec.dateAcquired,
+        imageUrl:      spec.imageUrl    || null,
+        imageUrlBack:  spec.imageUrlBack|| null,
       }),
     });
     const data = await res.json();
-    if (data.error) return { success: false, error: data.error.message || 'API error' };
-    const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    const m = txt.match(/\[R\]([\s\S]*?)\[\/R\]/);
-    if (m) { try { return JSON.parse(m[1].trim()); } catch(e) {} }
-    // Fallback: find GID in tool results
-    for (const b of (data.content||[])) {
-      if (b.type === 'mcp_tool_result') {
-        const t = b.content?.[0]?.text || '';
-        const g = t.match(/gid:\/\/shopify\/Product\/\d+/);
-        if (g) return { success: true, productId: g[0], title: spec.title };
-      }
-    }
-    return { success: false, error: 'No result — check Shopify drafts' };
-  } catch(e) {
+    if (data.ok) return { success: true, productId: data.product?.id, title: data.product?.title };
+    return { success: false, error: JSON.stringify(data.errors || data.error || 'Unknown error') };
+  } catch (e) {
     return { success: false, error: String(e) };
   }
 }
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ onClose, onSave, defaults }) {
-  const [anthKey,  setAnthKey]  = useState(defaults.anthKey  || '');
-  const [psaTok,   setPsaTok]   = useState(defaults.psaTok   || '');
-  const [showAnth, setShowAnth] = useState(false);
-  const [showPsa,  setShowPsa]  = useState(false);
+  const [workerUrl, setWorkerUrl] = useState(defaults.workerUrl || '');
+  const [psaTok,    setPsaTok]    = useState(defaults.psaTok    || '');
+  const [showPsa,   setShowPsa]   = useState(false);
+  const [testing,   setTesting]   = useState(false);
+  const [testMsg,   setTestMsg]   = useState(null);
+
+  const testWorker = async () => {
+    if (!workerUrl) return;
+    setTesting(true); setTestMsg(null);
+    try {
+      const r = await fetch(`${workerUrl.replace(/\/$/,'')}/health`);
+      const d = await r.json();
+      setTestMsg(d.ok ? { ok: true, msg: 'Worker is live ✓' } : { ok: false, msg: 'Worker responded but returned error' });
+    } catch(e) {
+      setTestMsg({ ok: false, msg: 'Could not reach worker — check URL' });
+    }
+    setTesting(false);
+  };
+
   const save = () => {
-    localStorage.setItem(LS.ANTH, anthKey);
-    localStorage.setItem(LS.PSA,  psaTok);
-    onSave({ anthKey, psaTok });
+    const clean = workerUrl.replace(/\/$/,'');
+    localStorage.setItem(LS.WORKER, clean);
+    localStorage.setItem(LS.PSA,    psaTok);
+    onSave({ workerUrl: clean, psaTok });
     onClose();
   };
+
   return (
     <div className="overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
       <div className="overlay-box">
@@ -407,15 +393,25 @@ function SettingsModal({ onClose, onSave, defaults }) {
         </div>
         <div className="col">
           <div>
-            <label className="label">Anthropic API Key — required for Shopify push</label>
+            <label className="label">Cloudflare Worker URL — required for all operations</label>
             <div className="row">
-              <input type={showAnth?'text':'password'} value={anthKey} onChange={e=>setAnthKey(e.target.value)} placeholder="sk-ant-..."/>
-              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setShowAnth(!showAnth)}>{showAnth?'HIDE':'SHOW'}</button>
+              <input
+                type="text"
+                value={workerUrl}
+                onChange={e=>{ setWorkerUrl(e.target.value); setTestMsg(null); }}
+                placeholder="https://sj-card-tool.yourname.workers.dev"
+              />
+              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} disabled={testing||!workerUrl} onClick={testWorker}>
+                {testing ? '…' : 'TEST'}
+              </button>
             </div>
-            <div style={{color:'#333',fontSize:10,marginTop:5}}>Get yours at console.anthropic.com · ~$0.01–0.05 per card pushed</div>
+            {testMsg && (
+              <div style={{marginTop:5,fontSize:10,color:testMsg.ok?'#4ade80':'#f87171'}}>{testMsg.msg}</div>
+            )}
+            <div style={{color:'#333',fontSize:10,marginTop:5}}>Find this in Cloudflare dashboard → Workers → your worker</div>
           </div>
           <div>
-            <label className="label">PSA API Token — optional, enables image + structured data</label>
+            <label className="label">PSA API Token — enables image + structured data lookup</label>
             <div className="row">
               <input type={showPsa?'text':'password'} value={psaTok} onChange={e=>setPsaTok(e.target.value)} placeholder="psacard.com/publicapi"/>
               <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setShowPsa(!showPsa)}>{showPsa?'HIDE':'SHOW'}</button>
@@ -434,12 +430,10 @@ function SettingsModal({ onClose, onSave, defaults }) {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 function App() {
-  // Config
-  const [anthKey,  setAnthKey]  = useState(() => localStorage.getItem(LS.ANTH) || '');
-  const [psaTok,   setPsaTok]   = useState(() => localStorage.getItem(LS.PSA)  || '');
+  const [workerUrl, setWorkerUrl] = useState(() => localStorage.getItem(LS.WORKER) || 'https://late-fog-6270.shiny-truth-fd5c.workers.dev');;
+  const [psaTok,       setPsaTok]       = useState(() => localStorage.getItem(LS.PSA)    || '');
   const [showSettings, setShowSettings] = useState(false);
 
-  // Tabs
   const [tab, setTab] = useState('batch');
 
   // Batch state
@@ -461,6 +455,9 @@ function App() {
   const [ooResult,   setOoResult]   = useState(null);
   const [manual,     setManual]     = useState({ year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball' });
   const [showManual, setShowManual] = useState(false);
+
+  // Show settings on first load if no worker URL set
+  useEffect(() => { if (!workerUrl) setShowSettings(true); }, []);
 
   // ── CSV load ──
   const loadFile = useCallback(file => {
@@ -490,97 +487,149 @@ function App() {
   };
 
   // ── Batch selection ──
-  const idleCards     = csvCards ? csvCards.filter(c => c.status==='idle') : [];
-  const checkedCount  = csvCards ? csvCards.filter(c => c.checked && c.status==='idle').length : 0;
-  const pushedCount   = csvCards ? csvCards.filter(c => c.status==='pushed').length : 0;
-  const allChecked    = idleCards.length > 0 && idleCards.every(c => c.checked);
+  const idleCards    = csvCards ? csvCards.filter(c => c.status==='idle') : [];
+  const checkedCount = csvCards ? csvCards.filter(c => c.checked && c.status==='idle').length : 0;
+  const pushedCount  = csvCards ? csvCards.filter(c => c.status==='pushed').length : 0;
+  const allChecked   = idleCards.length > 0 && idleCards.every(c => c.checked);
 
-  const toggleAll  = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:!allChecked} : c));
-  const clearSel   = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:false} : c));
-  const toggleRow  = i  => { if (csvCards[i].status!=='idle') return; setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, checked:!c.checked})); };
+  const toggleAll   = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:!allChecked} : c));
+  const clearSel    = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:false} : c));
+  const toggleRow   = i  => { if (csvCards[i].status!=='idle') return; setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, checked:!c.checked})); };
   const setCardCost = (i,v) => setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, cost:v}));
-  const applyBulk  = () => {
+  const applyBulk   = () => {
     if (!bulkCost) return;
     setCsvCards(p => p.map(c => c.checked&&c.status==='idle' ? {...c, cost:bulkCost} : c));
   };
 
   // ── Batch push ──
   const pushSelected = async () => {
-    if (!anthKey) { setShowSettings(true); return; }
+    if (!workerUrl) { setShowSettings(true); return; }
     const todo = csvCards.filter(c => c.checked && c.status==='idle');
     if (!todo.length) return;
     setPushing(true);
+
     for (const card of todo) {
       setCsvCards(p => p.map(c => c.id===card.id ? {...c, status:'pushing'} : c));
-      // Try PSA API
-      let title, type, sport, grade, imageUrl = null;
-      const apiRes = psaTok ? await fetchPSACert(card.certNum, psaTok) : { ok: false };
+
+      // Try PSA API via Worker
+      let psaData = null, imageUrl = null, imageUrlBack = null;
+      const apiRes = workerUrl ? await fetchPSACert(card.certNum, workerUrl) : { ok: false };
       if (apiRes.ok && apiRes.data) {
-        const d = apiRes.data;
-        [sport, type] = getSport(d.Category);
-        grade = d.IsDualCert
-          ? `${gNum(d.CardGrade)}/${d.AutographGrade==='Authentic'?'AUTH':gNum(d.AutographGrade)}`
-          : gNum(d.GradeDescription);
-        title    = buildTitle(d, 'PSA');
-        imageUrl = apiRes.image;
-      } else {
-        [sport, type] = detectSport(card.desc);
-        grade = gNum(card.gradeRaw);
-        title = titleFromDesc(card.desc, card.gradeRaw, 'PSA');
+        psaData      = apiRes.data;
+        imageUrl     = apiRes.image     || null;
+        imageUrlBack = apiRes.imageBack || null;
       }
-      const sku = makeSKU(batchDate, card.cost);
-      const result = await createShopifyProduct({
-        title, type, tags: [sport,'PSA','Graded'].sort(),
-        price: card.cost||'0', sku,
-        certNum: card.certNum, grade,
-        certLink: CLINKS.PSA(card.certNum),
-        dateAcquired: batchDate, imageUrl,
-      }, anthKey);
+
+      // Build spec — use PSA data if available, fall back to CSV
+      let spec;
+      if (psaData) {
+        const [sport, type] = getSport(psaData.Category);
+        spec = {
+          certNum:       card.certNum,
+          year:          psaData.Year          || '',
+          set:           psaData.Brand         || '',
+          playerName:    psaData.Subject       || '',
+          variation:     psaData.Variety       || '',
+          cardNumber:    psaData.CardNumber    || '',
+          grader:        'PSA',
+          grade:         gNum(psaData.GradeDescription),
+          isDualCert:    psaData.IsDualCert    || false,
+          autographGrade:psaData.AutographGrade|| null,
+          category:      psaData.Category      || '',
+          cost:          card.cost,
+          dateAcquired:  batchDate,
+          imageUrl,
+          imageUrlBack,
+        };
+      } else {
+        const [sport, type] = detectSport(card.desc);
+        spec = {
+          certNum:      card.certNum,
+          year:         '',
+          set:          tc(card.desc),
+          playerName:   '',
+          variation:    '',
+          cardNumber:   '',
+          grader:       'PSA',
+          grade:        gNum(card.gradeRaw),
+          isDualCert:   false,
+          autographGrade: null,
+          category:     sport.toUpperCase(),
+          cost:         card.cost,
+          dateAcquired: batchDate,
+          imageUrl:     null,
+          imageUrlBack: null,
+        };
+      }
+
+      const result = await createShopifyProduct(spec, workerUrl);
       setCsvCards(p => p.map(c => c.id===card.id ? {
         ...c,
-        status: result.success ? 'pushed' : 'failed',
-        error: result.error || null,
+        status:    result.success ? 'pushed' : 'failed',
+        error:     result.error   || null,
         shopifyId: result.productId || null,
       } : c));
     }
     setPushing(false);
   };
 
-  // ── One-off ──
+  // ── One-off lookup ──
   const lookup = async () => {
     if (!ooCert) return;
-    if (!psaTok) { alert('Add your PSA API token in Settings first.'); return; }
+    if (!workerUrl) { setShowSettings(true); return; }
     setOoLooking(true); setOoData(null); setOoResult(null);
-    const r = await fetchPSACert(ooCert, psaTok);
-    if (r.ok) { setOoData({...r.data, _image: r.image}); setShowManual(false); }
+    const r = await fetchPSACert(ooCert, workerUrl);
+    if (r.ok) { setOoData({...r.data, _image: r.image, _imageBack: r.imageBack}); setShowManual(false); }
     else       { setOoData({_error: r.error, _manual: true}); setShowManual(true); }
     setOoLooking(false);
   };
 
+  // ── One-off create ──
   const createOne = async () => {
-    if (!anthKey) { setShowSettings(true); return; }
+    if (!workerUrl) { setShowSettings(true); return; }
     setOoCreating(true); setOoResult(null);
-    let title, type, sport, grade;
     const g = grader;
+    let spec;
+
     if (ooData && !ooData._manual) {
-      [sport, type] = getSport(ooData.Category);
-      grade = ooData.IsDualCert
-        ? `${gNum(ooData.CardGrade)}/${ooData.AutographGrade==='Authentic'?'AUTH':gNum(ooData.AutographGrade)}`
-        : gNum(ooData.GradeDescription);
-      title = buildTitle(ooData, g);
+      spec = {
+        certNum:       ooCert,
+        year:          ooData.Year           || '',
+        set:           ooData.Brand          || '',
+        playerName:    ooData.Subject        || '',
+        variation:     ooData.Variety        || '',
+        cardNumber:    ooData.CardNumber     || '',
+        grader:        g,
+        grade:         gNum(ooData.GradeDescription),
+        isDualCert:    ooData.IsDualCert     || false,
+        autographGrade:ooData.AutographGrade || null,
+        category:      ooData.Category       || '',
+        cost:          ooCost,
+        dateAcquired:  ooDate,
+        imageUrl:      ooData._image         || null,
+        imageUrlBack:  ooData._imageBack     || null,
+      };
     } else {
-      [sport, type] = getSport(manual.sport + ' CARDS');
-      grade = manual.grade;
-      title = [manual.year,tc(manual.set),tc(manual.player),tc(manual.variation)||null,manual.cardNumber?`#${manual.cardNumber}`:null,g,grade].filter(Boolean).join(' ');
+      spec = {
+        certNum:       ooCert,
+        year:          manual.year,
+        set:           manual.set,
+        playerName:    manual.player,
+        variation:     manual.variation,
+        cardNumber:    manual.cardNumber,
+        grader:        g,
+        grade:         manual.grade,
+        isDualCert:    false,
+        autographGrade:null,
+        category:      manual.sport.toUpperCase(),
+        cost:          ooCost,
+        dateAcquired:  ooDate,
+        imageUrl:      null,
+        imageUrlBack:  null,
+      };
     }
-    const cl  = (CLINKS[g]||CLINKS.Other)(ooCert);
-    const sku = makeSKU(ooDate, ooCost);
-    const result = await createShopifyProduct({
-      title, type, tags: [sport,g,'Graded'].sort(),
-      price: ooCost||'0', sku,
-      certNum: ooCert, grade, certLink: cl,
-      dateAcquired: ooDate, imageUrl: ooData?._image||null,
-    }, anthKey);
+
+    const result = await createShopifyProduct(spec, workerUrl);
     setOoResult(result);
     setOoCreating(false);
     if (result.success) {
@@ -607,9 +656,9 @@ function App() {
     <>
     {showSettings && (
       <SettingsModal
-        defaults={{ anthKey, psaTok }}
+        defaults={{ workerUrl, psaTok }}
         onClose={() => setShowSettings(false)}
-        onSave={({ anthKey: a, psaTok: p }) => { setAnthKey(a); setPsaTok(p); }}
+        onSave={({ workerUrl: w, psaTok: p }) => { setWorkerUrl(w); setPsaTok(p); }}
       />
     )}
 
@@ -620,9 +669,8 @@ function App() {
         <div style={{color:'#2a2a2a',fontSize:10,letterSpacing:'.18em',marginTop:1}}>CARD IMPORT TOOL</div>
       </div>
       <div style={{display:'flex',alignItems:'center',gap:8}}>
-        {/* Status dots */}
         <div style={{display:'flex',alignItems:'center',gap:5}}>
-          <div style={{width:6,height:6,borderRadius:'50%',background:anthKey?'#f59e0b':'#222'}} title={anthKey?'Anthropic API key set':'No API key'}/>
+          <div style={{width:6,height:6,borderRadius:'50%',background:workerUrl?'#f59e0b':'#222'}} title={workerUrl?'Worker URL set':'No worker URL — open Settings'}/>
           <div style={{width:6,height:6,borderRadius:'50%',background:psaTok?'#4ade80':'#222'}} title={psaTok?'PSA token set':'No PSA token'}/>
         </div>
         <button className="gear-btn" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
@@ -641,7 +689,6 @@ function App() {
     {/* ════════ BATCH TAB ════════ */}
     {tab==='batch' && (<div className="col">
 
-      {/* Drop zone */}
       {!csvCards && (
         <div style={{maxWidth:520, margin:'20px auto'}}>
           <div
@@ -656,18 +703,15 @@ function App() {
             <div style={{color:dragging?'#f59e0b':'#555',fontWeight:700,letterSpacing:'.1em',marginBottom:8}}>DROP PSA ORDER CSV</div>
             <div style={{color:'#2e2e2e',fontSize:11}}>or click to browse &nbsp;·&nbsp; download from psacard.com order lookup</div>
           </div>
-          {!anthKey && (
+          {!workerUrl && (
             <div style={{marginTop:12,padding:'10px 14px',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.15)',borderRadius:6,fontSize:11,color:'#8a6a20',textAlign:'center'}}>
-              ⚠ &nbsp; Add your Anthropic API key in <button onClick={()=>setShowSettings(true)} style={{background:'transparent',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> before pushing to Shopify
+              ⚠ &nbsp; Add your Worker URL in <button onClick={()=>setShowSettings(true)} style={{background:'transparent',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> before pushing to Shopify
             </div>
           )}
         </div>
       )}
 
-      {/* Cards loaded */}
       {csvCards && (<>
-
-        {/* Controls */}
         <div className="panel" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
           <button className="btn-ghost" onClick={toggleAll} style={{fontSize:10}}>
             {allChecked && idleCards.length>0 ? 'DESELECT ALL' : 'SELECT ALL'}
@@ -682,7 +726,6 @@ function App() {
           <button className="btn-ghost" style={{fontSize:10}} onClick={()=>setCsvCards(null)}>↑ NEW FILE</button>
         </div>
 
-        {/* Date + bulk cost */}
         <div className="panel" style={{display:'flex',alignItems:'flex-end',gap:12,flexWrap:'wrap'}}>
           <div>
             <span style={lbl}>Date acquired — applies to all cards</span>
@@ -698,7 +741,7 @@ function App() {
           <div style={{flex:1}}/>
           <button
             className="btn-green"
-            disabled={pushing || checkedCount===0}
+            disabled={pushing || checkedCount===0 || !workerUrl}
             onClick={pushSelected}
             style={{padding:'8px 18px',fontSize:12}}
           >
@@ -706,7 +749,6 @@ function App() {
           </button>
         </div>
 
-        {/* Card list */}
         <div className="panel" style={{padding:0,overflow:'hidden'}}>
           {csvCards.map((card, i) => {
             const gradeN   = gNum(card.gradeRaw);
@@ -727,22 +769,14 @@ function App() {
                   onClick={e => e.stopPropagation()}
                   disabled={card.status!=='idle'}
                 />
-
-                {/* Cert # */}
                 <span style={{color:'#383838',fontSize:10,width:80,flexShrink:0}}>{card.certNum}</span>
-
-                {/* Description */}
                 <span style={{flex:1,fontSize:12,color:card.checked||isPushed?'#d4d4d4':'#484848',lineHeight:1.4,minWidth:0}}>
                   {tc(card.desc)}
                   {isPushed && card.shopifyId && <span style={{color:'#15803d',fontSize:9,display:'block',marginTop:2}}>{card.shopifyId}</span>}
                   {isFailed && <span style={{color:'#dc2626',fontSize:9,display:'block',marginTop:2}}>{card.error}</span>}
                   {isPush   && <span style={{color:'#3b82f6',fontSize:9,display:'block',marginTop:2}}>Creating in Shopify…</span>}
                 </span>
-
-                {/* Grade */}
                 <span className={`grade ${gradeClass(gradeN)}`}>{gradeN}</span>
-
-                {/* Cost input (selected idle only) */}
                 {card.checked && card.status==='idle' && (
                   <div className="row" onClick={e=>e.stopPropagation()} style={{flexShrink:0,gap:4}}>
                     <span style={{color:'#444',fontSize:11}}>$</span>
@@ -755,13 +789,9 @@ function App() {
                     />
                   </div>
                 )}
-
-                {/* SKU preview */}
                 {card.checked && card.status==='idle' && sku && (
                   <span style={{color:'#b45309',fontSize:10,flexShrink:0,width:130,textAlign:'right',fontFamily:"'Courier New',Courier,monospace"}}>{sku}</span>
                 )}
-
-                {/* Status tags */}
                 {isPushed && <span className="tag tag-done">DONE</span>}
                 {isFailed && <span className="tag tag-fail">FAIL</span>}
                 {isPush   && <span className="tag tag-push">PUSH…</span>}
@@ -784,7 +814,6 @@ function App() {
         </div>
       )}
 
-      {/* Grader */}
       <div className="panel">
         <span style={lbl}>Grading company</span>
         <div className="row" style={{flexWrap:'wrap',gap:6}}>
@@ -803,7 +832,6 @@ function App() {
         </div>
       </div>
 
-      {/* Cert # */}
       <div className="panel col">
         <div>
           <span style={lbl}>Cert number</span>
@@ -815,7 +843,7 @@ function App() {
               placeholder="e.g. 145531087"
             />
             {grader==='PSA' && (
-              <button className="btn-amber" disabled={ooLooking||!ooCert||!psaTok} onClick={lookup} style={{flexShrink:0}}>
+              <button className="btn-amber" disabled={ooLooking||!ooCert||!workerUrl} onClick={lookup} style={{flexShrink:0}}>
                 {ooLooking?'…':'LOOKUP'}
               </button>
             )}
@@ -823,14 +851,13 @@ function App() {
               <button className="btn-ghost" style={{flexShrink:0}} onClick={()=>setShowManual(true)}>ENTER</button>
             )}
           </div>
-          {!psaTok && grader==='PSA' && (
+          {!workerUrl && (
             <div style={{color:'#555',fontSize:10,marginTop:5}}>
-              Add PSA token in <button onClick={()=>setShowSettings(true)} style={{background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> to enable cert lookup
+              Add Worker URL in <button onClick={()=>setShowSettings(true)} style={{background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> to enable cert lookup
             </div>
           )}
         </div>
 
-        {/* PSA API result */}
         {ooData && !ooData._manual && (
           <div style={{display:'flex',gap:12,background:'#181818',borderRadius:5,padding:10}}>
             {ooData._image && <img src={ooData._image} alt="" style={{width:40,height:56,objectFit:'cover',borderRadius:3,border:'1px solid #222',flexShrink:0}}/>}
@@ -850,7 +877,6 @@ function App() {
         )}
       </div>
 
-      {/* Manual form */}
       {(showManual||ooData?._manual) && (
         <div className="panel col">
           <span style={lbl}>Card details</span>
@@ -866,7 +892,6 @@ function App() {
         </div>
       )}
 
-      {/* Cost / Date / Preview / Create */}
       {(ooData||showManual) && (
         <div className="panel col">
           <div className="grid2">
@@ -882,7 +907,7 @@ function App() {
             </div>
           )}
 
-          <button className="btn-green" disabled={ooCreating||!ooReady} onClick={createOne} style={{width:'100%',padding:'10px',fontSize:12}}>
+          <button className="btn-green" disabled={ooCreating||!ooReady||!workerUrl} onClick={createOne} style={{width:'100%',padding:'10px',fontSize:12}}>
             {ooCreating ? 'CREATING IN SHOPIFY…' : 'CREATE DRAFT IN SHOPIFY →'}
           </button>
 
