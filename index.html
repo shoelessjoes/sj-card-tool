@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shoeless Joe's — Card Import Tool</title>
+<title>Shoeless Joe's — Card Import</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,189 +11,261 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
-    background: #0a0a0a;
-    color: #e2e2e2;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 13px;
+    background: #111318;
+    color: #e1e2e6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
     min-height: 100vh;
   }
   ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: #111; }
-  ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2e3138; border-radius: 4px; }
 
-  input, select, textarea {
-    background: #181818;
-    border: 1px solid #2a2a2a;
-    border-radius: 4px;
-    color: #e2e2e2;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 12px;
+  input, select {
+    background: #1a1d24;
+    border: 1px solid #2a2e38;
+    border-radius: 6px;
+    color: #e1e2e6;
+    font-family: inherit;
+    font-size: 13px;
+    height: 34px;
     outline: none;
-    padding: 7px 10px;
-    transition: border-color .15s;
+    padding: 0 10px;
+    transition: border-color .15s, box-shadow .15s;
     width: 100%;
   }
-  input:focus, select:focus, textarea:focus { border-color: #f59e0b; }
+  input:focus, select:focus {
+    border-color: #5b9cf6;
+    box-shadow: 0 0 0 2px rgba(91,156,246,.12);
+  }
+  input::placeholder { color: #3d4150; }
   input[type="checkbox"] {
-    width: 15px; height: 15px;
-    accent-color: #f59e0b;
+    width: 16px; height: 16px;
+    accent-color: #5b9cf6;
     cursor: pointer;
     flex-shrink: 0;
   }
-  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.6); cursor: pointer; }
   input[type="number"]::-webkit-inner-spin-button { opacity: .3; }
   input[type="file"] { display: none; }
+  select option { background: #1a1d24; }
 
   button {
+    align-items: center;
     border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .07em;
-    padding: 7px 14px;
-    transition: background .15s, opacity .15s;
-  }
-  button:disabled { opacity: .35; cursor: not-allowed; }
-  .btn-amber  { background: #f59e0b; color: #000; }
-  .btn-amber:hover:not(:disabled)  { background: #fbbf24; }
-  .btn-green  { background: #15803d; color: #fff; }
-  .btn-green:hover:not(:disabled)  { background: #16a34a; }
-  .btn-ghost  { background: transparent; border: 1px solid #2e2e2e; color: #777; }
-  .btn-ghost:hover:not(:disabled)  { background: #1a1a1a; color: #bbb; border-color: #444; }
-  .btn-red    { background: transparent; border: 1px solid #3a1a1a; color: #f87171; }
-  .btn-red:hover:not(:disabled)    { background: #1f0e0e; }
-
-  .panel {
-    background: #111;
-    border: 1px solid #1e1e1e;
     border-radius: 6px;
-    padding: 14px 16px;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 6px;
+    height: 34px;
+    justify-content: center;
+    padding: 0 14px;
+    transition: background .12s, opacity .12s;
+    white-space: nowrap;
   }
-  .label {
-    color: #4a4a4a;
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .btn-primary { background: #5b9cf6; color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #74aef7; }
+  .btn-success { background: #166534; color: #4ade80; }
+  .btn-success:hover:not(:disabled) { background: #15803d; }
+  .btn-ghost { background: transparent; border: 1px solid #2a2e38; color: #8b8f9e; }
+  .btn-ghost:hover:not(:disabled) { background: #1a1d24; color: #c1c4ce; border-color: #3a3f4e; }
+  .btn-sm { height: 28px; font-size: 12px; padding: 0 10px; border-radius: 5px; }
+  .btn-lg { height: 40px; font-size: 14px; padding: 0 20px; }
+
+  .flex        { display: flex; }
+  .flex-col    { display: flex; flex-direction: column; }
+  .items-center{ align-items: center; }
+  .items-start { align-items: flex-start; }
+  .justify-end { justify-content: flex-end; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .flex-1    { flex: 1; }
+  .min-w-0   { min-width: 0; }
+  .flex-shrink-0 { flex-shrink: 0; }
+  .w-full    { width: 100%; }
+  .grid-2    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .span-2    { grid-column: 1 / -1; }
+  .truncate  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .text-xs   { font-size: 11px; }
+  .text-sm   { font-size: 12px; }
+  .font-mono { font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace; }
+  .font-medium  { font-weight: 500; }
+  .font-semibold{ font-weight: 600; }
+  .text-muted  { color: #5c6070; }
+  .text-subtle { color: #8b8f9e; }
+  .text-accent { color: #5b9cf6; }
+  .text-green  { color: #4ade80; }
+  .text-red    { color: #f87171; }
+  .text-amber  { color: #fbbf24; }
+
+  .card      { background: #15181f; border: 1px solid #1f2330; border-radius: 8px; }
+  .card-body { padding: 16px; }
+
+  .field-label {
+    color: #5c6070;
     display: block;
-    font-size: 9px;
-    letter-spacing: .14em;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .04em;
     margin-bottom: 5px;
     text-transform: uppercase;
   }
 
-  .card-row {
-    align-items: center;
-    border-bottom: 1px solid #161616;
-    border-left: 3px solid transparent;
-    cursor: pointer;
+  .app-header {
+    background: #0d0f14;
+    border-bottom: 1px solid #1a1d24;
     display: flex;
-    gap: 10px;
-    padding: 9px 14px;
-    transition: background .1s, border-color .1s;
-    user-select: none;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
   }
-  .card-row:last-child { border-bottom: none; }
-  .card-row:hover { background: #161616; }
-  .card-row.selected { background: rgba(245,158,11,.06); border-left-color: #f59e0b; }
-  .card-row.pushed   { background: rgba(21,128,61,.05);  border-left-color: #15803d; cursor: default; }
-  .card-row.failed   { border-left-color: #dc2626; }
-  .card-row.pushing  { opacity: .7; cursor: default; }
 
-  .grade { border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: .06em; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
-  .g10   { background: rgba(34,197,94,.15);  color: #4ade80; }
-  .g9    { background: rgba(245,158,11,.15); color: #f59e0b; }
-  .g8    { background: rgba(251,146,60,.15); color: #fb923c; }
-  .glow  { background: rgba(148,163,184,.12); color: #94a3b8; }
-
-  .tag { border-radius: 3px; flex-shrink: 0; font-size: 9px; font-weight: 700; letter-spacing: .08em; padding: 2px 6px; white-space: nowrap; }
-  .tag-done  { background: rgba(34,197,94,.15);  color: #4ade80; }
-  .tag-fail  { background: rgba(239,68,68,.15);  color: #f87171; }
-  .tag-push  { background: rgba(96,165,250,.15); color: #60a5fa; }
-  .tag-ready { background: rgba(245,158,11,.15); color: #f59e0b; }
-
-  .dropzone {
-    border: 2px dashed #222;
-    border-radius: 8px;
-    cursor: pointer;
-    padding: 50px 30px;
-    text-align: center;
-    transition: border-color .2s, background .2s;
+  .tab-nav {
+    background: #0d0f14;
+    border-bottom: 1px solid #1a1d24;
+    display: flex;
+    padding: 0 20px;
   }
-  .dropzone:hover, .dropzone.drag { border-color: #f59e0b; background: rgba(245,158,11,.03); }
-
-  .tab-bar { border-bottom: 1px solid #1a1a1a; display: flex; padding-left: 16px; }
   .tab-btn {
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
-    color: #444;
-    cursor: pointer;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .1em;
-    padding: 11px 18px;
+    border-radius: 0;
+    color: #5c6070;
+    font-size: 13px;
+    font-weight: 500;
+    height: 42px;
+    padding: 0 16px;
     transition: color .15s, border-color .15s;
   }
-  .tab-btn:hover { color: #888; }
-  .tab-btn.active { border-bottom-color: #f59e0b; color: #f59e0b; }
+  .tab-btn:hover { color: #8b8f9e; background: transparent; }
+  .tab-btn.active { border-bottom-color: #5b9cf6; color: #5b9cf6; }
+
+  .dropzone {
+    border: 2px dashed #2a2e38;
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 60px 40px;
+    text-align: center;
+    transition: border-color .2s, background .2s;
+  }
+  .dropzone:hover, .dropzone.drag {
+    border-color: #5b9cf6;
+    background: rgba(91,156,246,.04);
+  }
+
+  .grade-badge {
+    border-radius: 5px;
+    font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    flex-shrink: 0;
+  }
+  .grade-10 { background: rgba(74,222,128,.12); color: #4ade80; }
+  .grade-9  { background: rgba(251,191,36,.12);  color: #fbbf24; }
+  .grade-8  { background: rgba(251,146,60,.12);  color: #fb923c; }
+  .grade-lo { background: rgba(148,163,184,.1);  color: #94a3b8; }
+
+  .status-badge {
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    padding: 2px 7px;
+    text-transform: uppercase;
+  }
+  .status-done { background: rgba(74,222,128,.1);  color: #4ade80; }
+  .status-fail { background: rgba(248,113,113,.1); color: #f87171; }
+  .status-push { background: rgba(91,156,246,.1);  color: #5b9cf6; }
+
+  .card-row {
+    align-items: center;
+    border-bottom: 1px solid #1a1d24;
+    border-left: 2px solid transparent;
+    display: flex;
+    gap: 10px;
+    padding: 9px 16px;
+    transition: background .1s, border-color .1s;
+    cursor: pointer;
+    user-select: none;
+  }
+  .card-row:last-child { border-bottom: none; }
+  .card-row:hover     { background: #1a1d24; }
+  .card-row.selected  { background: rgba(91,156,246,.05); border-left-color: #5b9cf6; }
+  .card-row.pushed    { background: rgba(74,222,128,.04); border-left-color: #4ade80; cursor: default; }
+  .card-row.failed    { border-left-color: #f87171; }
+  .card-row.pushing   { opacity: .6; cursor: default; }
+
+  .col-header-row {
+    align-items: center;
+    border-bottom: 1px solid #1f2330;
+    display: flex;
+    gap: 10px;
+    padding: 7px 16px;
+  }
+
+  .sku-preview {
+    background: rgba(251,191,36,.07);
+    border: 1px solid rgba(251,191,36,.15);
+    border-radius: 4px;
+    color: #fbbf24;
+    font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 
   .overlay {
     align-items: center;
-    background: rgba(0,0,0,.85);
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(4px);
     bottom: 0; left: 0; right: 0; top: 0;
     display: flex;
     justify-content: center;
     position: fixed;
     z-index: 100;
   }
-  .overlay-box {
-    background: #141414;
-    border: 1px solid #2a2a2a;
-    border-radius: 8px;
-    max-width: 480px;
-    padding: 28px;
+  .overlay-panel {
+    background: #15181f;
+    border: 1px solid #2a2e38;
+    border-radius: 10px;
+    max-width: 500px;
+    padding: 24px;
     width: 90%;
   }
 
-  .monospace { font-family: 'Courier New', Courier, monospace; }
-  .row { display: flex; align-items: center; gap: 8px; }
-  .col { display: flex; flex-direction: column; gap: 12px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .span2 { grid-column: 1 / -1; }
-  .muted { color: #444; }
-  .amber { color: #f59e0b; }
-  .green { color: #4ade80; }
-  .red   { color: #f87171; }
+  .banner { border-radius: 7px; font-size: 13px; padding: 10px 14px; }
+  .banner-warning { background: rgba(251,191,36,.07);  border: 1px solid rgba(251,191,36,.15);  color: #92741a; }
+  .banner-success { background: rgba(74,222,128,.07);  border: 1px solid rgba(74,222,128,.15);  color: #166534; }
+  .banner-error   { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.15); color: #991b1b; }
+
   .preview-block {
-    background: #181818;
-    border: 1px solid #222;
-    border-radius: 4px;
+    background: #111318;
+    border: 1px solid #1f2330;
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
     padding: 10px 12px;
   }
   .preview-row { display: flex; gap: 10px; align-items: flex-start; }
-  .preview-key { color: #333; font-size: 10px; flex-shrink: 0; width: 36px; padding-top: 1px; }
-  .preview-val { color: #ccc; font-size: 11px; line-height: 1.5; word-break: break-all; }
-  .preview-sku { color: #f59e0b; font-size: 13px; font-weight: 700; }
-
-  .gear-btn {
-    align-items: center;
-    background: transparent;
-    border: 1px solid #222;
-    border-radius: 4px;
-    color: #444;
-    cursor: pointer;
-    display: flex;
-    font-size: 16px;
-    height: 32px;
-    justify-content: center;
-    padding: 0;
-    transition: color .15s, border-color .15s;
-    width: 32px;
-  }
-  .gear-btn:hover { color: #888; border-color: #444; }
+  .preview-key { color: #5c6070; font-size: 10px; flex-shrink: 0; width: 36px; padding-top: 2px; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -202,66 +274,75 @@
 <script type="text/babel">
 const { useState, useRef, useCallback, useEffect } = React;
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const TODAY = new Date().toISOString().split('T')[0];
-const LS = {
-  PSA:    'sj_psa_token',
-  WORKER: 'sj_worker_url',
-};
-const GRADERS = ['PSA','BGS','SGC','CGC','TAG','Other'];
-const SPORTS  = ['Baseball','Basketball','Football','Hockey','Soccer','Pokemon','Pop Culture','Entertainment','Multi-Sport','UFC/MMA','Other'];
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TODAY      = new Date().toISOString().split('T')[0];
+const WORKER_URL = 'https://late-fog-6270.shiny-truth-fd5c.workers.dev';
+const LS_PSA     = 'sj_psa_token';
+const LS_WORKER  = 'sj_worker_url';
+const GRADERS    = ['PSA','BGS','SGC','CGC','TAG','Other'];
+const SPORTS     = ['Baseball','Basketball','Football','Hockey','Soccer','Pokemon','Pop Culture','Entertainment','Multi-Sport','UFC/MMA','Other'];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const tc = s => !s ? '' : s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-const gNum = d => { const m = String(d||'').match(/(\d+\.?\d*)$/); return m ? m[1] : String(d||''); };
-const makeSKU = (date, cost) => {
-  if (!date || !cost) return '';
-  return date.replace(/-/g,'') + String(parseInt(cost)||0);
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const tc   = s => !s ? '' : s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+const gNum = d  => { const m = String(d||'').match(/(\d+\.?\d*)$/); return m ? m[1] : String(d||''); };
+
+const makeSKU = cost => {
+  if (!cost) return '';
+  const d    = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth()+1).padStart(2,'0');
+  const dd   = String(d.getDate()).padStart(2,'0');
+  return `${yyyy}${mm}${dd}${parseInt(cost)||0}`;
 };
 
-const SMAP = {
-  BASEBALL:['Baseball','Graded Baseball Card'], BASKETBALL:['Basketball','Graded Basketball Card'],
-  FOOTBALL:['Football','Graded Football Card'],  HOCKEY:['Hockey','Graded Hockey Card'],
-  SOCCER:['Soccer','Graded Soccer Card'],        POKEMON:['Pokemon','Graded Pokemon Card'],
-  TCG:['Pokemon','Graded Pokemon Card'],         ENTERTAINMENT:['Entertainment','Graded Entertainment Card'],
-  'POP CULTURE':['Pop Culture','Graded Pop Culture Card'], 'MULTI-SPORT':['Multi-Sport','Graded Multi-Sport Card'],
-  UFC:['UFC/MMA','Graded Entertainment Card'],
+const SPORT_MAP = {
+  BASEBALL:     ['Baseball',     'Graded Baseball Card'],
+  BASKETBALL:   ['Basketball',   'Graded Basketball Card'],
+  FOOTBALL:     ['Football',     'Graded Football Card'],
+  HOCKEY:       ['Hockey',       'Graded Hockey Card'],
+  SOCCER:       ['Soccer',       'Graded Soccer Card'],
+  POKEMON:      ['Pokemon',      'Graded Pokemon Card'],
+  TCG:          ['Pokemon',      'Graded Pokemon Card'],
+  ENTERTAINMENT:['Entertainment','Graded Entertainment Card'],
+  'POP CULTURE':['Pop Culture',  'Graded Pop Culture Card'],
+  'MULTI-SPORT':['Multi-Sport',  'Graded Multi-Sport Card'],
+  UFC:          ['UFC/MMA',      'Graded Entertainment Card'],
 };
 const getSport = cat => {
   const u = (cat||'').toUpperCase();
-  for (const [k,v] of Object.entries(SMAP)) if (u.includes(k)) return v;
+  for (const [k,v] of Object.entries(SPORT_MAP)) if (u.includes(k)) return v;
   return ['Other','Graded Card'];
 };
 
-const BBALL_NAMES = ['CURRY','FLAGG','EDWARDS','TATUM','DONCIC','JAMES','KOBE','BRYANT','GARNETT','BIRD','MAGIC JOHNSON','SHAQUILLE','O\'NEAL','JORDAN','PIPPEN','BARKLEY','EWING','ROBINSON','WESTBROOK','HARDEN','DURANT','LEONARD','GEORGE'];
-const FBALL_NAMES = ['MAHOMES','BRADY','BURROW','CHASE','JEFFERSON','STROUD','NABERS','HIGGINS','GOLDEN','HARRISON','KELCE','MANNING','BOWERS','MAYE','LAMAR','ALLEN','STAFFORD','RODGERS','FAVRE','MONTANA','MARINO','ELWAY','SANDERS'];
-const BSBAL_NAMES = ['OHTANI','GRIFFEY','RUTH','JUDGE','TROUT','ALONSO','JETER','RIPKEN','CLEMENTE','MANTLE','AARON','KOUFAX','MAYS','MUSIAL','MOOKIE','DEVERS','SOTO','TATIS','ACUNA','WITT'];
+const BBALL = ['CURRY','FLAGG','EDWARDS','TATUM','DONCIC','JAMES','KOBE','BRYANT','GARNETT','BIRD','JORDAN','PIPPEN','BARKLEY','WESTBROOK','HARDEN','DURANT','LEONARD'];
+const FBALL = ['MAHOMES','BRADY','BURROW','CHASE','JEFFERSON','STROUD','KELCE','MANNING','LAMAR','ALLEN','STAFFORD','RODGERS','FAVRE','MONTANA','MARINO'];
+const BSBAL = ['OHTANI','GRIFFEY','RUTH','JUDGE','TROUT','ALONSO','JETER','RIPKEN','CLEMENTE','MANTLE','AARON','MAYS','SOTO','TATIS','ACUNA','WITT'];
 const detectSport = desc => {
   const u = (desc||'').toUpperCase();
-  if (u.includes('POKEMON')||u.includes(' TCG ')) return ['Pokemon','Graded Pokemon Card'];
-  if (u.includes('FIFA')||u.includes('UEFA')||u.includes(' MLS ')) return ['Soccer','Graded Soccer Card'];
-  if (u.includes('BASKETBALL')||BBALL_NAMES.some(p=>u.includes(p))) return ['Basketball','Graded Basketball Card'];
-  if (u.includes(' NFL ')||u.includes('FOOTBALL')||FBALL_NAMES.some(p=>u.includes(p))) return ['Football','Graded Football Card'];
-  if (u.includes(' MLB ')||u.includes('BASEBALL')||BSBAL_NAMES.some(p=>u.includes(p))) return ['Baseball','Graded Baseball Card'];
-  if (u.includes('NHL')||u.includes('HOCKEY')) return ['Hockey','Graded Hockey Card'];
+  if (u.includes('POKEMON')||u.includes(' TCG '))             return ['Pokemon','Graded Pokemon Card'];
+  if (u.includes('FIFA')||u.includes('UEFA'))                  return ['Soccer','Graded Soccer Card'];
+  if (u.includes('BASKETBALL')||BBALL.some(p=>u.includes(p))) return ['Basketball','Graded Basketball Card'];
+  if (u.includes('FOOTBALL')||FBALL.some(p=>u.includes(p)))   return ['Football','Graded Football Card'];
+  if (u.includes('BASEBALL')||BSBAL.some(p=>u.includes(p)))   return ['Baseball','Graded Baseball Card'];
+  if (u.includes('HOCKEY'))                                     return ['Hockey','Graded Hockey Card'];
   return ['Other','Graded Card'];
 };
 
-const CLINKS = {
+const CERT_LINKS = {
   PSA:   c => `https://www.psacard.com/cert/${c}`,
   BGS:   c => `https://www.beckett.com/gradingsubmission/pop/${String(c).padStart(11,'0')}`,
   SGC:   c => `https://www.sgccard.com/cert/${c}`,
   CGC:   c => `https://www.cgccards.com/certlookup/${c}`,
-  TAG:   () => `https://taggradingcard.com`,
-  Other: () => ``,
+  TAG:   ()=> `https://taggradingcard.com`,
+  Other: ()=> ``,
 };
 
 const gradeClass = n => {
   const v = parseFloat(n);
-  if (v === 10) return 'g10';
-  if (v >= 9)   return 'g9';
-  if (v >= 7)   return 'g8';
-  return 'glow';
+  if (v === 10) return 'grade-10';
+  if (v >= 9)   return 'grade-9';
+  if (v >= 7)   return 'grade-8';
+  return 'grade-lo';
 };
 
 // ─── CSV Parser ───────────────────────────────────────────────────────────────
@@ -276,15 +357,11 @@ function parseCSV(text) {
       if (c === ',' && !q) { r.push(f); f = ''; continue; }
       f += c;
     }
-    r.push(f);
-    return r;
+    r.push(f); return r;
   };
   const hdrs = parseLine(lines[0]).map(h => h.trim());
   return lines.slice(1)
-    .map(l => {
-      const v = parseLine(l);
-      return Object.fromEntries(hdrs.map((h,i) => [h, (v[i]||'').trim()]));
-    })
+    .map(l => { const v = parseLine(l); return Object.fromEntries(hdrs.map((h,i)=>[h,(v[i]||'').trim()])); })
     .filter(r => Object.values(r).some(v => v));
 }
 
@@ -294,14 +371,11 @@ const buildTitle = (d, g='PSA') => {
   if (d.IsDualCert) {
     const cg=gNum(d.CardGrade), ag=d.AutographGrade==='Authentic'?'AUTH':gNum(d.AutographGrade);
     gr=`${cg}/${ag}`;
-  } else gr = gNum(d.GradeDescription||'');
+  } else gr=gNum(d.GradeDescription||'');
   return [yr,br,sb,va||null,cn?`#${cn}`:null,g,gr].filter(Boolean).join(' ');
 };
 
-const titleFromDesc = (desc, gradeStr, g='PSA') =>
-  `${tc(desc)} ${g} ${gNum(gradeStr)}`;
-
-// ─── API Calls — all through Worker ──────────────────────────────────────────
+// ─── API ──────────────────────────────────────────────────────────────────────
 async function fetchPSACert(certNum, workerUrl) {
   try {
     const [dr, ir] = await Promise.all([
@@ -313,43 +387,21 @@ async function fetchPSACert(certNum, workerUrl) {
     const psa  = body.PSACert;
     if (!psa)  return { ok: false, error: 'No cert data returned' };
     const imgs = ir.ok ? await ir.json() : {};
-    const front = imgs.front || null;
-    const back  = imgs.back  || null;
-    return { ok: true, data: psa, image: front, imageBack: back };
-  } catch (e) {
-    return { ok: false, error: String(e) };
-  }
+    return { ok: true, data: psa, image: imgs.front||null, imageBack: imgs.back||null };
+  } catch(e) { return { ok: false, error: String(e) }; }
 }
 
-async function createShopifyProduct(spec, workerUrl) {
+async function pushToShopify(spec, workerUrl) {
   try {
-    const res = await fetch(`${workerUrl}/shopify/product`, {
+    const res  = await fetch(`${workerUrl}/shopify/product`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        certNumber:    spec.certNum,
-        year:          spec.year        || '',
-        set:           spec.set         || '',
-        playerName:    spec.playerName  || '',
-        variation:     spec.variation   || '',
-        cardNumber:    spec.cardNumber  || '',
-        grader:        spec.grader      || 'PSA',
-        grade:         spec.grade       || '',
-        isDualCert:    spec.isDualCert  || false,
-        autographGrade:spec.autographGrade || null,
-        category:      spec.category    || '',
-        cost:          spec.cost        || '0',
-        dateAcquired:  spec.dateAcquired,
-        imageUrl:      spec.imageUrl    || null,
-        imageUrlBack:  spec.imageUrlBack|| null,
-      }),
+      body: JSON.stringify(spec),
     });
     const data = await res.json();
     if (data.ok) return { success: true, productId: data.product?.id, title: data.product?.title };
     return { success: false, error: JSON.stringify(data.errors || data.error || 'Unknown error') };
-  } catch (e) {
-    return { success: false, error: String(e) };
-  }
+  } catch(e) { return { success: false, error: String(e) }; }
 }
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
@@ -360,67 +412,54 @@ function SettingsModal({ onClose, onSave, defaults }) {
   const [testing,   setTesting]   = useState(false);
   const [testMsg,   setTestMsg]   = useState(null);
 
-  const testWorker = async () => {
-    if (!workerUrl) return;
+  const test = async () => {
     setTesting(true); setTestMsg(null);
     try {
       const r = await fetch(`${workerUrl.replace(/\/$/,'')}/health`);
       const d = await r.json();
-      setTestMsg(d.ok ? { ok: true, msg: 'Worker is live ✓' } : { ok: false, msg: 'Worker responded but returned error' });
-    } catch(e) {
-      setTestMsg({ ok: false, msg: 'Could not reach worker — check URL' });
-    }
+      setTestMsg(d.ok ? { ok:true, msg:'Worker is live ✓' } : { ok:false, msg:'Worker returned an error' });
+    } catch(e) { setTestMsg({ ok:false, msg:'Could not reach worker — check URL' }); }
     setTesting(false);
   };
 
   const save = () => {
     const clean = workerUrl.replace(/\/$/,'');
-    localStorage.setItem(LS.WORKER, clean);
-    localStorage.setItem(LS.PSA,    psaTok);
+    localStorage.setItem(LS_WORKER, clean);
+    localStorage.setItem(LS_PSA,    psaTok);
     onSave({ workerUrl: clean, psaTok });
     onClose();
   };
 
   return (
-    <div className="overlay" onClick={e => e.target===e.currentTarget&&onClose()}>
-      <div className="overlay-box">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+    <div className="overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="overlay-panel">
+        <div className="flex items-center" style={{justifyContent:'space-between',marginBottom:20}}>
           <div>
-            <div style={{color:'#f59e0b',fontWeight:700,fontSize:14,letterSpacing:'.1em'}}>CONFIGURATION</div>
-            <div style={{color:'#333',fontSize:10,marginTop:2}}>Stored locally in your browser</div>
+            <div className="font-semibold">Settings</div>
+            <div className="text-xs text-muted" style={{marginTop:2}}>Saved locally in this browser</div>
           </div>
-          <button className="btn-ghost" style={{padding:'4px 10px'}} onClick={onClose}>✕</button>
+          <button className="btn-ghost btn-sm" onClick={onClose}>✕</button>
         </div>
-        <div className="col">
+        <div className="flex-col gap-4">
           <div>
-            <label className="label">Cloudflare Worker URL — required for all operations</label>
-            <div className="row">
-              <input
-                type="text"
-                value={workerUrl}
-                onChange={e=>{ setWorkerUrl(e.target.value); setTestMsg(null); }}
-                placeholder="https://sj-card-tool.yourname.workers.dev"
-              />
-              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} disabled={testing||!workerUrl} onClick={testWorker}>
-                {testing ? '…' : 'TEST'}
-              </button>
+            <label className="field-label">Worker URL</label>
+            <div className="flex gap-2">
+              <input value={workerUrl} onChange={e=>{setWorkerUrl(e.target.value);setTestMsg(null);}} placeholder="https://your-worker.workers.dev"/>
+              <button className="btn-ghost btn-sm flex-shrink-0" disabled={testing||!workerUrl} onClick={test} style={{width:60}}>{testing?'…':'Test'}</button>
             </div>
-            {testMsg && (
-              <div style={{marginTop:5,fontSize:10,color:testMsg.ok?'#4ade80':'#f87171'}}>{testMsg.msg}</div>
-            )}
-            <div style={{color:'#333',fontSize:10,marginTop:5}}>Find this in Cloudflare dashboard → Workers → your worker</div>
+            {testMsg && <div className="text-xs" style={{marginTop:5,color:testMsg.ok?'#4ade80':'#f87171'}}>{testMsg.msg}</div>}
           </div>
           <div>
-            <label className="label">PSA API Token — enables image + structured data lookup</label>
-            <div className="row">
-              <input type={showPsa?'text':'password'} value={psaTok} onChange={e=>setPsaTok(e.target.value)} placeholder="psacard.com/publicapi"/>
-              <button className="btn-ghost" style={{padding:'6px 10px',flexShrink:0}} onClick={()=>setShowPsa(!showPsa)}>{showPsa?'HIDE':'SHOW'}</button>
+            <label className="field-label">PSA API Token</label>
+            <div className="flex gap-2">
+              <input type={showPsa?'text':'password'} value={psaTok} onChange={e=>setPsaTok(e.target.value)} placeholder="Enables cert lookup and images"/>
+              <button className="btn-ghost btn-sm flex-shrink-0" onClick={()=>setShowPsa(!showPsa)} style={{width:60}}>{showPsa?'Hide':'Show'}</button>
             </div>
-            <div style={{color:'#333',fontSize:10,marginTop:5}}>Without this the tool uses CSV data only — no images, no cert verification</div>
+            <div className="text-xs text-muted" style={{marginTop:4}}>Without this, only CSV data is used — no images or cert verification</div>
           </div>
-          <div style={{display:'flex',gap:8,justifyContent:'flex-end',paddingTop:4}}>
-            <button className="btn-ghost" onClick={onClose}>CANCEL</button>
-            <button className="btn-amber" onClick={save}>SAVE</button>
+          <div className="flex gap-2 justify-end" style={{paddingTop:4}}>
+            <button className="btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn-primary" onClick={save}>Save</button>
           </div>
         </div>
       </div>
@@ -430,371 +469,351 @@ function SettingsModal({ onClose, onSave, defaults }) {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 function App() {
-  const [workerUrl, setWorkerUrl] = useState(() => localStorage.getItem(LS.WORKER) || 'https://late-fog-6270.shiny-truth-fd5c.workers.dev');;
-  const [psaTok,       setPsaTok]       = useState(() => localStorage.getItem(LS.PSA)    || '');
+  const [workerUrl,    setWorkerUrl]    = useState(()=>localStorage.getItem(LS_WORKER)||WORKER_URL);
+  const [psaTok,       setPsaTok]       = useState(()=>localStorage.getItem(LS_PSA)||'');
   const [showSettings, setShowSettings] = useState(false);
+  const [tab,          setTab]          = useState('batch');
 
-  const [tab, setTab] = useState('batch');
-
-  // Batch state
+  // Batch
   const [csvCards,  setCsvCards]  = useState(null);
-  const [batchDate, setBatchDate] = useState(TODAY);
   const [bulkCost,  setBulkCost]  = useState('');
+  const [bulkPrice, setBulkPrice] = useState('');
   const [pushing,   setPushing]   = useState(false);
   const [dragging,  setDragging]  = useState(false);
   const fileRef = useRef();
 
-  // One-off state
+  // Quick add
   const [grader,     setGrader]     = useState('PSA');
   const [ooCert,     setOoCert]     = useState('');
   const [ooLooking,  setOoLooking]  = useState(false);
   const [ooData,     setOoData]     = useState(null);
   const [ooCost,     setOoCost]     = useState('');
-  const [ooDate,     setOoDate]     = useState(TODAY);
+  const [ooPrice,    setOoPrice]    = useState('');
   const [ooCreating, setOoCreating] = useState(false);
   const [ooResult,   setOoResult]   = useState(null);
-  const [manual,     setManual]     = useState({ year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball' });
   const [showManual, setShowManual] = useState(false);
+  const [manual,     setManual]     = useState({year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball'});
 
-  // Show settings on first load if no worker URL set
-  useEffect(() => { if (!workerUrl) setShowSettings(true); }, []);
-
-  // ── CSV load ──
+  // Load CSV
   const loadFile = useCallback(file => {
-    if (!file || !file.name.endsWith('.csv')) return;
+    if (!file||!file.name.endsWith('.csv')) return;
     const r = new FileReader();
     r.onload = e => {
-      const rows = parseCSV(e.target.result);
-      const certKey  = Object.keys(rows[0]||{}).find(k => /cert/i.test(k));
-      const descKey  = Object.keys(rows[0]||{}).find(k => /desc/i.test(k));
-      const gradeKey = Object.keys(rows[0]||{}).find(k => /grade/i.test(k));
-      if (!certKey) { alert('Could not find Cert # column. Is this a PSA order CSV?'); return; }
-      setCsvCards(rows.map((r,i) => ({
+      const rows     = parseCSV(e.target.result);
+      const certKey  = Object.keys(rows[0]||{}).find(k=>/cert/i.test(k));
+      const descKey  = Object.keys(rows[0]||{}).find(k=>/desc/i.test(k));
+      const gradeKey = Object.keys(rows[0]||{}).find(k=>/grade/i.test(k));
+      if (!certKey) { alert('No Cert # column found — is this a PSA order CSV?'); return; }
+      setCsvCards(rows.map((r,i)=>({
         id: i,
         certNum:  String(r[certKey]||'').replace(/'/g,'').trim(),
         desc:     String(r[descKey]||r['Description']||'').trim(),
         gradeRaw: String(r[gradeKey]||r['Grade']||'').trim(),
-        checked: false, cost: '',
+        checked: false, cost: '', price: '',
         status: 'idle', error: null, shopifyId: null,
       })));
     };
     r.readAsText(file);
   }, []);
 
-  const onDrop = e => {
-    e.preventDefault(); setDragging(false);
-    loadFile(e.dataTransfer.files[0]);
+  const onDrop = e => { e.preventDefault(); setDragging(false); loadFile(e.dataTransfer.files[0]); };
+
+  // Selection
+  const idleCards    = csvCards?.filter(c=>c.status==='idle') || [];
+  const checkedCount = csvCards?.filter(c=>c.checked&&c.status==='idle').length || 0;
+  const pushedCount  = csvCards?.filter(c=>c.status==='pushed').length || 0;
+  const allChecked   = idleCards.length>0 && idleCards.every(c=>c.checked);
+
+  const toggleAll = () => setCsvCards(p=>p.map(c=>c.status==='idle'?{...c,checked:!allChecked}:c));
+  const clearSel  = () => setCsvCards(p=>p.map(c=>c.status==='idle'?{...c,checked:false}:c));
+  const toggleRow = i  => { if(csvCards[i].status!=='idle')return; setCsvCards(p=>p.map((c,j)=>j!==i?c:{...c,checked:!c.checked})); };
+  const setField  = (i,field,val) => setCsvCards(p=>p.map((c,j)=>j!==i?c:{...c,[field]:val}));
+
+  const applyBulk = () => {
+    if (!bulkCost && !bulkPrice) return;
+    setCsvCards(p=>p.map(c=>{
+      if (!c.checked||c.status!=='idle') return c;
+      return { ...c, ...(bulkCost?{cost:bulkCost}:{}), ...(bulkPrice?{price:bulkPrice}:{}) };
+    }));
   };
 
-  // ── Batch selection ──
-  const idleCards    = csvCards ? csvCards.filter(c => c.status==='idle') : [];
-  const checkedCount = csvCards ? csvCards.filter(c => c.checked && c.status==='idle').length : 0;
-  const pushedCount  = csvCards ? csvCards.filter(c => c.status==='pushed').length : 0;
-  const allChecked   = idleCards.length > 0 && idleCards.every(c => c.checked);
-
-  const toggleAll   = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:!allChecked} : c));
-  const clearSel    = () => setCsvCards(p => p.map(c => c.status==='idle' ? {...c, checked:false} : c));
-  const toggleRow   = i  => { if (csvCards[i].status!=='idle') return; setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, checked:!c.checked})); };
-  const setCardCost = (i,v) => setCsvCards(p => p.map((c,j) => j!==i ? c : {...c, cost:v}));
-  const applyBulk   = () => {
-    if (!bulkCost) return;
-    setCsvCards(p => p.map(c => c.checked&&c.status==='idle' ? {...c, cost:bulkCost} : c));
-  };
-
-  // ── Batch push ──
+  // Batch push
   const pushSelected = async () => {
     if (!workerUrl) { setShowSettings(true); return; }
-    const todo = csvCards.filter(c => c.checked && c.status==='idle');
+    const todo = csvCards.filter(c=>c.checked&&c.status==='idle');
     if (!todo.length) return;
     setPushing(true);
 
     for (const card of todo) {
-      setCsvCards(p => p.map(c => c.id===card.id ? {...c, status:'pushing'} : c));
-
-      // Try PSA API via Worker
-      let psaData = null, imageUrl = null, imageUrlBack = null;
-      const apiRes = workerUrl ? await fetchPSACert(card.certNum, workerUrl) : { ok: false };
-      if (apiRes.ok && apiRes.data) {
-        psaData      = apiRes.data;
-        imageUrl     = apiRes.image     || null;
-        imageUrlBack = apiRes.imageBack || null;
-      }
-
-      // Build spec — use PSA data if available, fall back to CSV
+      setCsvCards(p=>p.map(c=>c.id===card.id?{...c,status:'pushing'}:c));
+      const apiRes = psaTok ? await fetchPSACert(card.certNum, workerUrl) : { ok:false };
       let spec;
-      if (psaData) {
-        const [sport, type] = getSport(psaData.Category);
+
+      if (apiRes.ok && apiRes.data) {
+        const d = apiRes.data;
         spec = {
-          certNum:       card.certNum,
-          year:          psaData.Year          || '',
-          set:           psaData.Brand         || '',
-          playerName:    psaData.Subject       || '',
-          variation:     psaData.Variety       || '',
-          cardNumber:    psaData.CardNumber    || '',
-          grader:        'PSA',
-          grade:         gNum(psaData.GradeDescription),
-          isDualCert:    psaData.IsDualCert    || false,
-          autographGrade:psaData.AutographGrade|| null,
-          category:      psaData.Category      || '',
-          cost:          card.cost,
-          dateAcquired:  batchDate,
-          imageUrl,
-          imageUrlBack,
+          certNumber: card.certNum, year: d.Year||'', set: d.Brand||'', playerName: d.Subject||'',
+          variation: d.Variety||'', cardNumber: d.CardNumber||'', grader: 'PSA',
+          grade: gNum(d.GradeDescription), isDualCert: d.IsDualCert||false,
+          autographGrade: d.AutographGrade||null, category: d.Category||'',
+          cost: card.cost||'100', dateAcquired: TODAY,
+          imageUrl: apiRes.image||null, imageUrlBack: apiRes.imageBack||null,
+          price: card.price||'0',
         };
       } else {
-        const [sport, type] = detectSport(card.desc);
+        const [sport] = detectSport(card.desc);
         spec = {
-          certNum:      card.certNum,
-          year:         '',
-          set:          tc(card.desc),
-          playerName:   '',
-          variation:    '',
-          cardNumber:   '',
-          grader:       'PSA',
-          grade:        gNum(card.gradeRaw),
-          isDualCert:   false,
-          autographGrade: null,
-          category:     sport.toUpperCase(),
-          cost:         card.cost,
-          dateAcquired: batchDate,
-          imageUrl:     null,
-          imageUrlBack: null,
+          certNumber: card.certNum, year: '', set: tc(card.desc), playerName: '',
+          variation: '', cardNumber: '', grader: 'PSA',
+          grade: gNum(card.gradeRaw), isDualCert: false, autographGrade: null,
+          category: sport.toUpperCase(), cost: card.cost||'100', dateAcquired: TODAY,
+          imageUrl: null, imageUrlBack: null, price: card.price||'0',
         };
       }
 
-      const result = await createShopifyProduct(spec, workerUrl);
-      setCsvCards(p => p.map(c => c.id===card.id ? {
-        ...c,
-        status:    result.success ? 'pushed' : 'failed',
-        error:     result.error   || null,
-        shopifyId: result.productId || null,
-      } : c));
+      const result = await pushToShopify(spec, workerUrl);
+      setCsvCards(p=>p.map(c=>c.id===card.id?{
+        ...c, status: result.success?'pushed':'failed',
+        error: result.error||null, shopifyId: result.productId||null,
+      }:c));
     }
     setPushing(false);
   };
 
-  // ── One-off lookup ──
+  // Quick add lookup
   const lookup = async () => {
-    if (!ooCert) return;
-    if (!workerUrl) { setShowSettings(true); return; }
+    if (!ooCert||!workerUrl) return;
     setOoLooking(true); setOoData(null); setOoResult(null);
     const r = await fetchPSACert(ooCert, workerUrl);
-    if (r.ok) { setOoData({...r.data, _image: r.image, _imageBack: r.imageBack}); setShowManual(false); }
-    else       { setOoData({_error: r.error, _manual: true}); setShowManual(true); }
+    if (r.ok) { setOoData({...r.data,_image:r.image,_imageBack:r.imageBack}); setShowManual(false); }
+    else       { setOoData({_error:r.error,_manual:true}); setShowManual(true); }
     setOoLooking(false);
   };
 
-  // ── One-off create ──
+  // Quick add create
   const createOne = async () => {
-    if (!workerUrl) { setShowSettings(true); return; }
+    if (!workerUrl) return;
     setOoCreating(true); setOoResult(null);
-    const g = grader;
     let spec;
-
-    if (ooData && !ooData._manual) {
+    if (ooData&&!ooData._manual) {
       spec = {
-        certNum:       ooCert,
-        year:          ooData.Year           || '',
-        set:           ooData.Brand          || '',
-        playerName:    ooData.Subject        || '',
-        variation:     ooData.Variety        || '',
-        cardNumber:    ooData.CardNumber     || '',
-        grader:        g,
-        grade:         gNum(ooData.GradeDescription),
-        isDualCert:    ooData.IsDualCert     || false,
-        autographGrade:ooData.AutographGrade || null,
-        category:      ooData.Category       || '',
-        cost:          ooCost,
-        dateAcquired:  ooDate,
-        imageUrl:      ooData._image         || null,
-        imageUrlBack:  ooData._imageBack     || null,
+        certNumber: ooCert, year: ooData.Year||'', set: ooData.Brand||'', playerName: ooData.Subject||'',
+        variation: ooData.Variety||'', cardNumber: ooData.CardNumber||'', grader,
+        grade: gNum(ooData.GradeDescription), isDualCert: ooData.IsDualCert||false,
+        autographGrade: ooData.AutographGrade||null, category: ooData.Category||'',
+        cost: ooCost||'100', dateAcquired: TODAY,
+        imageUrl: ooData._image||null, imageUrlBack: ooData._imageBack||null,
+        price: ooPrice||'0',
       };
     } else {
       spec = {
-        certNum:       ooCert,
-        year:          manual.year,
-        set:           manual.set,
-        playerName:    manual.player,
-        variation:     manual.variation,
-        cardNumber:    manual.cardNumber,
-        grader:        g,
-        grade:         manual.grade,
-        isDualCert:    false,
-        autographGrade:null,
-        category:      manual.sport.toUpperCase(),
-        cost:          ooCost,
-        dateAcquired:  ooDate,
-        imageUrl:      null,
-        imageUrlBack:  null,
+        certNumber: ooCert, year: manual.year, set: manual.set, playerName: manual.player,
+        variation: manual.variation, cardNumber: manual.cardNumber, grader,
+        grade: manual.grade, isDualCert: false, autographGrade: null,
+        category: manual.sport.toUpperCase(), cost: ooCost||'100', dateAcquired: TODAY,
+        imageUrl: null, imageUrlBack: null, price: ooPrice||'0',
       };
     }
-
-    const result = await createShopifyProduct(spec, workerUrl);
+    const result = await pushToShopify(spec, workerUrl);
     setOoResult(result);
     setOoCreating(false);
     if (result.success) {
-      setOoCert(''); setOoData(null); setOoCost(''); setOoDate(TODAY);
+      setOoCert(''); setOoData(null); setOoCost(''); setOoPrice('');
       setManual({year:'',set:'',player:'',cardNumber:'',variation:'',grade:'',sport:'Baseball'});
       setShowManual(false);
     }
   };
 
-  // ── Derived (one-off) ──
   const ooTitle = ooData&&!ooData._manual
-    ? buildTitle(ooData, grader)
+    ? buildTitle(ooData,grader)
     : showManual
       ? [manual.year,tc(manual.set),tc(manual.player),tc(manual.variation)||null,manual.cardNumber?`#${manual.cardNumber}`:null,grader,manual.grade].filter(Boolean).join(' ')
       : '';
-  const ooSKU   = makeSKU(ooDate, ooCost);
-  const ooReady = ooCert && ooCost && ooDate &&
-    ((ooData&&!ooData._manual)||(showManual&&manual.year&&manual.set&&manual.player&&manual.grade));
-
-  const lbl = { color:'#4a4a4a', display:'block', fontSize:'9px', letterSpacing:'.14em', marginBottom:5, textTransform:'uppercase' };
-  const inp = { background:'#181818', border:'1px solid #2a2a2a', borderRadius:4, color:'#e2e2e2', fontFamily:"'Courier New',Courier,monospace", fontSize:12, outline:'none', padding:'7px 10px', width:'100%' };
+  const ooSKU   = makeSKU(ooCost);
+  const ooReady = ooCert && ((ooData&&!ooData._manual)||(showManual&&manual.year&&manual.set&&manual.player&&manual.grade));
 
   return (
     <>
     {showSettings && (
       <SettingsModal
         defaults={{ workerUrl, psaTok }}
-        onClose={() => setShowSettings(false)}
-        onSave={({ workerUrl: w, psaTok: p }) => { setWorkerUrl(w); setPsaTok(p); }}
+        onClose={()=>setShowSettings(false)}
+        onSave={({workerUrl:w,psaTok:p})=>{setWorkerUrl(w);setPsaTok(p);}}
       />
     )}
 
-    {/* ── Header ── */}
-    <div style={{borderBottom:'1px solid #181818',padding:'10px 20px',display:'flex',alignItems:'center',gap:12}}>
-      <div style={{flex:1}}>
-        <div style={{color:'#f59e0b',fontWeight:700,fontSize:15,letterSpacing:'.12em'}}>SHOELESS JOE'S</div>
-        <div style={{color:'#2a2a2a',fontSize:10,letterSpacing:'.18em',marginTop:1}}>CARD IMPORT TOOL</div>
+    {/* Header */}
+    <div className="app-header">
+      <div className="flex-1">
+        <span className="font-semibold">Shoeless Joe's</span>
+        <span className="text-subtle text-sm" style={{marginLeft:8}}>Card Import</span>
       </div>
-      <div style={{display:'flex',alignItems:'center',gap:8}}>
-        <div style={{display:'flex',alignItems:'center',gap:5}}>
-          <div style={{width:6,height:6,borderRadius:'50%',background:workerUrl?'#f59e0b':'#222'}} title={workerUrl?'Worker URL set':'No worker URL — open Settings'}/>
-          <div style={{width:6,height:6,borderRadius:'50%',background:psaTok?'#4ade80':'#222'}} title={psaTok?'PSA token set':'No PSA token'}/>
+      <div className="flex items-center gap-3">
+        <div className="flex gap-2 items-center">
+          <div className="status-dot" style={{background:workerUrl?'#5b9cf6':'#2a2e38'}} title={workerUrl?'Worker connected':'No worker URL'}/>
+          <div className="status-dot" style={{background:psaTok?'#4ade80':'#2a2e38'}}   title={psaTok?'PSA token set':'No PSA token'}/>
         </div>
-        <button className="gear-btn" onClick={() => setShowSettings(true)} title="Settings">⚙</button>
+        <button className="btn-ghost btn-sm" onClick={()=>setShowSettings(true)}>Settings</button>
       </div>
     </div>
 
-    {/* ── Tabs ── */}
-    <div className="tab-bar">
-      {[['batch','⬡  PSA ORDER'],['oneoff','◈  QUICK ADD']].map(([t,l]) => (
-        <button key={t} className={`tab-btn${tab===t?' active':''}`} onClick={() => setTab(t)}>{l}</button>
+    {/* Tabs */}
+    <div className="tab-nav">
+      {[['batch','PSA Order'],['oneoff','Quick Add']].map(([t,l])=>(
+        <button key={t} className={`tab-btn${tab===t?' active':''}`} onClick={()=>setTab(t)}>{l}</button>
       ))}
     </div>
 
-    <div style={{padding:16, maxWidth:1100, margin:'0 auto'}}>
+    <div style={{padding:20,maxWidth:1100,margin:'0 auto'}}>
 
-    {/* ════════ BATCH TAB ════════ */}
-    {tab==='batch' && (<div className="col">
+    {/* ═══ BATCH TAB ═══ */}
+    {tab==='batch' && (
+    <div className="flex-col gap-4">
 
       {!csvCards && (
-        <div style={{maxWidth:520, margin:'20px auto'}}>
+        <div style={{maxWidth:540,margin:'20px auto',width:'100%'}}>
           <div
             className={`dropzone${dragging?' drag':''}`}
             onDragOver={e=>{e.preventDefault();setDragging(true)}}
             onDragLeave={()=>setDragging(false)}
             onDrop={onDrop}
-            onClick={() => fileRef.current.click()}
+            onClick={()=>fileRef.current.click()}
           >
             <input ref={fileRef} type="file" accept=".csv" onChange={e=>loadFile(e.target.files[0])}/>
-            <div style={{fontSize:32,marginBottom:14,color:dragging?'#f59e0b':'#2a2a2a'}}>↑</div>
-            <div style={{color:dragging?'#f59e0b':'#555',fontWeight:700,letterSpacing:'.1em',marginBottom:8}}>DROP PSA ORDER CSV</div>
-            <div style={{color:'#2e2e2e',fontSize:11}}>or click to browse &nbsp;·&nbsp; download from psacard.com order lookup</div>
+            <div style={{fontSize:28,marginBottom:12,color:dragging?'#5b9cf6':'#2a2e38'}}>↑</div>
+            <div className="font-medium" style={{marginBottom:6,color:dragging?'#5b9cf6':'#8b8f9e'}}>Drop your PSA order CSV here</div>
+            <div className="text-xs text-muted">or click to browse · download from psacard.com order lookup</div>
           </div>
-          {!workerUrl && (
-            <div style={{marginTop:12,padding:'10px 14px',background:'rgba(245,158,11,.06)',border:'1px solid rgba(245,158,11,.15)',borderRadius:6,fontSize:11,color:'#8a6a20',textAlign:'center'}}>
-              ⚠ &nbsp; Add your Worker URL in <button onClick={()=>setShowSettings(true)} style={{background:'transparent',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> before pushing to Shopify
-            </div>
-          )}
         </div>
       )}
 
       {csvCards && (<>
-        <div className="panel" style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-          <button className="btn-ghost" onClick={toggleAll} style={{fontSize:10}}>
-            {allChecked && idleCards.length>0 ? 'DESELECT ALL' : 'SELECT ALL'}
+
+        {/* Toolbar */}
+        <div className="card card-body flex items-center gap-3" style={{flexWrap:'wrap'}}>
+          <button className="btn-ghost btn-sm" onClick={toggleAll}>
+            {allChecked&&idleCards.length>0?'Deselect all':'Select all'}
           </button>
-          {checkedCount>0 && <button className="btn-ghost" onClick={clearSel} style={{fontSize:10}}>CLEAR</button>}
-          <div style={{display:'flex',gap:10,fontSize:12}}>
-            <span className="amber">{checkedCount} selected</span>
-            {pushedCount>0 && <span className="green">{pushedCount} pushed</span>}
-            <span className="muted">{csvCards.length} total</span>
+          {checkedCount>0 && <button className="btn-ghost btn-sm" onClick={clearSel}>Clear</button>}
+          <div className="flex gap-3 text-sm" style={{marginLeft:4}}>
+            {checkedCount>0 && <span className="text-accent">{checkedCount} selected</span>}
+            {pushedCount>0  && <span className="text-green">{pushedCount} pushed</span>}
+            <span className="text-muted">{csvCards.length} total</span>
           </div>
-          <div style={{flex:1}}/>
-          <button className="btn-ghost" style={{fontSize:10}} onClick={()=>setCsvCards(null)}>↑ NEW FILE</button>
+          <div className="flex-1"/>
+          <button className="btn-ghost btn-sm" onClick={()=>setCsvCards(null)}>Load new file</button>
         </div>
 
-        <div className="panel" style={{display:'flex',alignItems:'flex-end',gap:12,flexWrap:'wrap'}}>
+        {/* Bulk controls */}
+        <div className="card card-body flex items-end gap-3" style={{flexWrap:'wrap'}}>
           <div>
-            <span style={lbl}>Date acquired — applies to all cards</span>
-            <input type="date" value={batchDate} onChange={e=>setBatchDate(e.target.value)} style={{...inp,width:170}}/>
+            <label className="field-label">Bulk cost</label>
+            <input type="number" step="1" min="0" value={bulkCost} onChange={e=>setBulkCost(e.target.value)} placeholder="100" style={{width:100}}/>
           </div>
           <div>
-            <span style={lbl}>Bulk cost — apply to selected</span>
-            <div className="row">
-              <input type="number" step="1" min="0" value={bulkCost} onChange={e=>setBulkCost(e.target.value)} placeholder="100" style={{...inp,width:110}}/>
-              <button className="btn-ghost" style={{flexShrink:0,padding:'7px 12px',fontSize:10}} onClick={applyBulk}>APPLY</button>
-            </div>
+            <label className="field-label">Bulk price</label>
+            <input type="number" step="0.01" min="0" value={bulkPrice} onChange={e=>setBulkPrice(e.target.value)} placeholder="0.00" style={{width:100}}/>
           </div>
-          <div style={{flex:1}}/>
+          <button className="btn-ghost btn-sm" onClick={applyBulk} disabled={(!bulkCost&&!bulkPrice)||checkedCount===0}>
+            Apply to selected
+          </button>
+          <div className="flex-1"/>
           <button
-            className="btn-green"
-            disabled={pushing || checkedCount===0 || !workerUrl}
+            className="btn-success btn-lg"
+            disabled={pushing||checkedCount===0||!workerUrl}
             onClick={pushSelected}
-            style={{padding:'8px 18px',fontSize:12}}
           >
-            {pushing ? 'PUSHING…' : `PUSH ${checkedCount} → SHOPIFY`}
+            {pushing?'Pushing…':`Push ${checkedCount} to Shopify`}
           </button>
         </div>
 
-        <div className="panel" style={{padding:0,overflow:'hidden'}}>
-          {csvCards.map((card, i) => {
+        {/* Card list */}
+        <div className="card" style={{overflow:'hidden'}}>
+
+          {/* Column headers */}
+          <div className="col-header-row">
+            <div style={{width:16,flexShrink:0}}/>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90}}>Cert #</div>
+            <div className="text-xs text-muted flex-1">Description</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:50,textAlign:'center'}}>Grade</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90,textAlign:'right'}}>Cost</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90,textAlign:'right'}}>Price</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:116,textAlign:'right'}}>SKU</div>
+            <div style={{width:52,flexShrink:0}}/>
+          </div>
+
+          {csvCards.map((card,i) => {
             const gradeN   = gNum(card.gradeRaw);
-            const sku      = card.cost && batchDate ? makeSKU(batchDate, card.cost) : '';
+            const sku      = card.cost ? makeSKU(card.cost) : '';
             const isPushed = card.status==='pushed';
             const isFailed = card.status==='failed';
             const isPush   = card.status==='pushing';
+            const isIdle   = card.status==='idle';
+
             return (
               <div
                 key={card.id}
                 className={`card-row${card.checked?' selected':''}${isPushed?' pushed':''}${isFailed?' failed':''}${isPush?' pushing':''}`}
-                onClick={() => toggleRow(i)}
+                onClick={()=>toggleRow(i)}
               >
                 <input
                   type="checkbox"
-                  checked={card.checked || isPushed}
-                  onChange={() => toggleRow(i)}
-                  onClick={e => e.stopPropagation()}
-                  disabled={card.status!=='idle'}
+                  checked={card.checked||isPushed}
+                  onChange={()=>toggleRow(i)}
+                  onClick={e=>e.stopPropagation()}
+                  disabled={!isIdle}
                 />
-                <span style={{color:'#383838',fontSize:10,width:80,flexShrink:0}}>{card.certNum}</span>
-                <span style={{flex:1,fontSize:12,color:card.checked||isPushed?'#d4d4d4':'#484848',lineHeight:1.4,minWidth:0}}>
+
+                <span className="font-mono text-xs text-muted flex-shrink-0" style={{width:90}}>{card.certNum}</span>
+
+                <span className="text-sm flex-1 min-w-0 truncate" style={{color:card.checked||isPushed?'#c8cad2':'#6b7280'}}>
                   {tc(card.desc)}
-                  {isPushed && card.shopifyId && <span style={{color:'#15803d',fontSize:9,display:'block',marginTop:2}}>{card.shopifyId}</span>}
-                  {isFailed && <span style={{color:'#dc2626',fontSize:9,display:'block',marginTop:2}}>{card.error}</span>}
-                  {isPush   && <span style={{color:'#3b82f6',fontSize:9,display:'block',marginTop:2}}>Creating in Shopify…</span>}
+                  {isPushed && card.shopifyId && <span className="text-green font-mono" style={{fontSize:10,display:'block',marginTop:1}}>{card.shopifyId}</span>}
+                  {isFailed && <span className="text-red" style={{fontSize:10,display:'block',marginTop:1}}>{card.error}</span>}
+                  {isPush   && <span className="text-accent" style={{fontSize:10,display:'block',marginTop:1}}>Creating…</span>}
                 </span>
-                <span className={`grade ${gradeClass(gradeN)}`}>{gradeN}</span>
-                {card.checked && card.status==='idle' && (
-                  <div className="row" onClick={e=>e.stopPropagation()} style={{flexShrink:0,gap:4}}>
-                    <span style={{color:'#444',fontSize:11}}>$</span>
+
+                <div style={{width:50,textAlign:'center',flexShrink:0}}>
+                  <span className={`grade-badge ${gradeClass(gradeN)}`}>{gradeN}</span>
+                </div>
+
+                {/* Cost */}
+                <div style={{width:90,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  {isIdle && (
                     <input
                       type="number" step="1" min="0"
                       value={card.cost}
-                      onChange={e=>setCardCost(i,e.target.value)}
-                      placeholder="cost"
-                      style={{...inp,width:72,padding:'4px 7px',fontSize:11}}
+                      onChange={e=>setField(i,'cost',e.target.value)}
+                      placeholder="100"
+                      style={{textAlign:'right',height:28,fontSize:12,padding:'0 8px'}}
                     />
-                  </div>
-                )}
-                {card.checked && card.status==='idle' && sku && (
-                  <span style={{color:'#b45309',fontSize:10,flexShrink:0,width:130,textAlign:'right',fontFamily:"'Courier New',Courier,monospace"}}>{sku}</span>
-                )}
-                {isPushed && <span className="tag tag-done">DONE</span>}
-                {isFailed && <span className="tag tag-fail">FAIL</span>}
-                {isPush   && <span className="tag tag-push">PUSH…</span>}
+                  )}
+                </div>
+
+                {/* Price */}
+                <div style={{width:90,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  {isIdle && (
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={card.price}
+                      onChange={e=>setField(i,'price',e.target.value)}
+                      placeholder="0.00"
+                      style={{textAlign:'right',height:28,fontSize:12,padding:'0 8px'}}
+                    />
+                  )}
+                </div>
+
+                {/* SKU */}
+                <div style={{width:116,textAlign:'right',flexShrink:0}}>
+                  {sku && <span className="sku-preview">{sku}</span>}
+                </div>
+
+                {/* Status */}
+                <div style={{width:52,flexShrink:0,textAlign:'right'}}>
+                  {isPushed && <span className="status-badge status-done">Done</span>}
+                  {isFailed && <span className="status-badge status-fail">Fail</span>}
+                  {isPush   && <span className="status-badge status-push">…</span>}
+                </div>
               </div>
             );
           })}
@@ -802,119 +821,139 @@ function App() {
       </>)}
     </div>)}
 
-    {/* ════════ QUICK ADD TAB ════════ */}
+    {/* ═══ QUICK ADD TAB ═══ */}
     {tab==='oneoff' && (
-    <div className="col" style={{maxWidth:560}}>
+    <div className="flex-col gap-4" style={{maxWidth:560}}>
 
       {ooResult?.success && (
-        <div style={{padding:'12px 16px',background:'rgba(21,128,61,.1)',border:'1px solid rgba(21,128,61,.25)',borderRadius:6}}>
-          <div className="green" style={{fontWeight:700,fontSize:12,marginBottom:4}}>✓ DRAFT CREATED IN SHOPIFY</div>
-          <div style={{color:'#166534',fontSize:11}}>{ooResult.title}</div>
-          {ooResult.productId && <div style={{color:'rgba(21,128,61,.5)',fontSize:10,marginTop:2,fontFamily:'monospace'}}>{ooResult.productId}</div>}
+        <div className="banner banner-success">
+          <div className="font-medium" style={{marginBottom:2}}>Draft created in Shopify</div>
+          <div className="text-sm">{ooResult.title}</div>
+          {ooResult.productId && <div className="font-mono text-xs" style={{marginTop:4,opacity:.6}}>{ooResult.productId}</div>}
         </div>
       )}
 
-      <div className="panel">
-        <span style={lbl}>Grading company</span>
-        <div className="row" style={{flexWrap:'wrap',gap:6}}>
-          {GRADERS.map(g => (
+      {/* Grader */}
+      <div className="card card-body">
+        <label className="field-label">Grading company</label>
+        <div className="flex gap-2" style={{flexWrap:'wrap'}}>
+          {GRADERS.map(g=>(
             <button
               key={g}
-              style={{
-                background: grader===g ? '#f59e0b' : 'transparent',
-                border: grader===g ? 'none' : '1px solid #2a2a2a',
-                color: grader===g ? '#000' : '#555',
-                padding:'5px 14px',
-              }}
-              onClick={() => { setGrader(g); setOoData(null); setOoResult(null); setShowManual(g!=='PSA'); }}
+              className={grader===g?'btn-primary btn-sm':'btn-ghost btn-sm'}
+              onClick={()=>{setGrader(g);setOoData(null);setOoResult(null);setShowManual(g!=='PSA');}}
             >{g}</button>
           ))}
         </div>
       </div>
 
-      <div className="panel col">
+      {/* Cert lookup */}
+      <div className="card card-body flex-col gap-3">
         <div>
-          <span style={lbl}>Cert number</span>
-          <div className="row">
+          <label className="field-label">Cert number</label>
+          <div className="flex gap-2">
             <input
               value={ooCert}
               onChange={e=>{setOoCert(e.target.value);setOoData(null);setOoResult(null);}}
               onKeyDown={e=>e.key==='Enter'&&grader==='PSA'&&lookup()}
               placeholder="e.g. 145531087"
             />
-            {grader==='PSA' && (
-              <button className="btn-amber" disabled={ooLooking||!ooCert||!workerUrl} onClick={lookup} style={{flexShrink:0}}>
-                {ooLooking?'…':'LOOKUP'}
+            {grader==='PSA' ? (
+              <button className="btn-primary btn-sm flex-shrink-0" disabled={ooLooking||!ooCert||!workerUrl} onClick={lookup} style={{width:80}}>
+                {ooLooking?'…':'Look up'}
               </button>
-            )}
-            {grader!=='PSA' && (
-              <button className="btn-ghost" style={{flexShrink:0}} onClick={()=>setShowManual(true)}>ENTER</button>
+            ) : (
+              <button className="btn-ghost btn-sm flex-shrink-0" onClick={()=>setShowManual(true)} style={{width:80}}>Enter</button>
             )}
           </div>
-          {!workerUrl && (
-            <div style={{color:'#555',fontSize:10,marginTop:5}}>
-              Add Worker URL in <button onClick={()=>setShowSettings(true)} style={{background:'none',border:'none',color:'#f59e0b',cursor:'pointer',fontFamily:'inherit',fontSize:10,fontWeight:700,padding:0,textDecoration:'underline'}}>Settings</button> to enable cert lookup
-            </div>
-          )}
         </div>
 
-        {ooData && !ooData._manual && (
-          <div style={{display:'flex',gap:12,background:'#181818',borderRadius:5,padding:10}}>
-            {ooData._image && <img src={ooData._image} alt="" style={{width:40,height:56,objectFit:'cover',borderRadius:3,border:'1px solid #222',flexShrink:0}}/>}
-            <div className="col" style={{gap:4}}>
-              <div style={{color:'#ddd',fontWeight:700,fontSize:12,lineHeight:1.4}}>{buildTitle(ooData,grader)}</div>
-              <div style={{color:'#444',fontSize:10}}>{ooData.Category}</div>
-              <div className="row" style={{gap:10,fontSize:11}}>
-                <span className={`grade ${gradeClass(gNum(ooData.GradeDescription))}`}>{ooData.GradeDescription}</span>
-                {ooData.IsDualCert && <span style={{color:'#555'}}>AUTO: {ooData.AutographGrade}</span>}
+        {/* PSA result preview */}
+        {ooData&&!ooData._manual && (
+          <div className="flex gap-3 items-start" style={{background:'#111318',borderRadius:6,padding:12}}>
+            {ooData._image && (
+              <img src={ooData._image} alt="" style={{width:44,height:60,objectFit:'cover',borderRadius:4,border:'1px solid #1f2330',flexShrink:0}}/>
+            )}
+            <div className="flex-col gap-2">
+              <div className="font-medium text-sm">{buildTitle(ooData,grader)}</div>
+              <div className="text-xs text-muted">{ooData.Category}</div>
+              <div className="flex gap-2 items-center">
+                <span className={`grade-badge ${gradeClass(gNum(ooData.GradeDescription))}`}>{ooData.GradeDescription}</span>
+                {ooData.IsDualCert && <span className="text-xs text-muted">Auto: {ooData.AutographGrade}</span>}
               </div>
-              <div style={{color:'#333',fontSize:10}}>Pop: {ooData.TotalPopulation} total · {ooData.PopulationHigher} higher</div>
+              <div className="text-xs text-muted">Pop {ooData.TotalPopulation} · {ooData.PopulationHigher} higher</div>
             </div>
           </div>
         )}
-        {ooData?._error && (
-          <div style={{color:'#f87171',fontSize:11,background:'rgba(239,68,68,.07)',borderRadius:4,padding:'6px 10px'}}>{ooData._error}</div>
-        )}
+
+        {ooData?._error && <div className="banner banner-error text-sm">{ooData._error}</div>}
       </div>
 
+      {/* Manual entry */}
       {(showManual||ooData?._manual) && (
-        <div className="panel col">
-          <span style={lbl}>Card details</span>
-          <div className="grid2">
-            <div><span style={lbl}>Year</span><input value={manual.year} onChange={e=>setManual(m=>({...m,year:e.target.value}))} placeholder="1998"/></div>
-            <div><span style={lbl}>Card number</span><input value={manual.cardNumber} onChange={e=>setManual(m=>({...m,cardNumber:e.target.value}))} placeholder="94"/></div>
-            <div className="span2"><span style={lbl}>Set / Brand</span><input value={manual.set} onChange={e=>setManual(m=>({...m,set:e.target.value}))} placeholder="Topps Chrome"/></div>
-            <div className="span2"><span style={lbl}>Player / Subject</span><input value={manual.player} onChange={e=>setManual(m=>({...m,player:e.target.value}))} placeholder="Carl Pickens"/></div>
-            <div className="span2"><span style={lbl}>Variation</span><input value={manual.variation} onChange={e=>setManual(m=>({...m,variation:e.target.value}))} placeholder="Refractor"/></div>
-            <div><span style={lbl}>Grade</span><input value={manual.grade} onChange={e=>setManual(m=>({...m,grade:e.target.value}))} placeholder="9"/></div>
-            <div><span style={lbl}>Sport</span><select value={manual.sport} onChange={e=>setManual(m=>({...m,sport:e.target.value}))}>{SPORTS.map(s=><option key={s}>{s}</option>)}</select></div>
+        <div className="card card-body flex-col gap-3">
+          <label className="field-label">Card details</label>
+          <div className="grid-2">
+            <div><label className="field-label">Year</label><input value={manual.year} onChange={e=>setManual(m=>({...m,year:e.target.value}))} placeholder="1998"/></div>
+            <div><label className="field-label">Card #</label><input value={manual.cardNumber} onChange={e=>setManual(m=>({...m,cardNumber:e.target.value}))} placeholder="94"/></div>
+            <div className="span-2"><label className="field-label">Set / Brand</label><input value={manual.set} onChange={e=>setManual(m=>({...m,set:e.target.value}))} placeholder="Topps Chrome"/></div>
+            <div className="span-2"><label className="field-label">Player / Subject</label><input value={manual.player} onChange={e=>setManual(m=>({...m,player:e.target.value}))} placeholder="Mike Trout"/></div>
+            <div className="span-2"><label className="field-label">Variation</label><input value={manual.variation} onChange={e=>setManual(m=>({...m,variation:e.target.value}))} placeholder="Refractor"/></div>
+            <div><label className="field-label">Grade</label><input value={manual.grade} onChange={e=>setManual(m=>({...m,grade:e.target.value}))} placeholder="9"/></div>
+            <div><label className="field-label">Sport</label><select value={manual.sport} onChange={e=>setManual(m=>({...m,sport:e.target.value}))}>{SPORTS.map(s=><option key={s}>{s}</option>)}</select></div>
           </div>
         </div>
       )}
 
+      {/* Cost / Price / Create */}
       {(ooData||showManual) && (
-        <div className="panel col">
-          <div className="grid2">
-            <div><span style={lbl}>Date acquired</span><input type="date" value={ooDate} onChange={e=>setOoDate(e.target.value)}/></div>
-            <div><span style={lbl}>Cost ($)</span><input type="number" step="1" min="0" value={ooCost} onChange={e=>setOoCost(e.target.value)} placeholder="100"/></div>
+        <div className="card card-body flex-col gap-3">
+          <div className="grid-2">
+            <div>
+              <label className="field-label">Cost — what you paid</label>
+              <input type="number" step="1" min="0" value={ooCost} onChange={e=>setOoCost(e.target.value)} placeholder="100"/>
+            </div>
+            <div>
+              <label className="field-label">Price — sticker price</label>
+              <input type="number" step="0.01" min="0" value={ooPrice} onChange={e=>setOoPrice(e.target.value)} placeholder="0.00"/>
+            </div>
           </div>
 
           {(ooTitle||ooSKU) && (
             <div className="preview-block">
-              {ooTitle && <div className="preview-row"><span className="preview-key">TITLE</span><span className="preview-val">{ooTitle}</span></div>}
-              {ooSKU   && <div className="preview-row"><span className="preview-key">SKU</span><span className="preview-val preview-sku">{ooSKU}</span></div>}
-              {ooCert  && <div className="preview-row"><span className="preview-key">CERT</span><span className="preview-val muted">{(CLINKS[grader]||CLINKS.Other)(ooCert)}</span></div>}
+              {ooTitle && (
+                <div className="preview-row">
+                  <span className="preview-key">Title</span>
+                  <span className="text-sm">{ooTitle}</span>
+                </div>
+              )}
+              {ooSKU && (
+                <div className="preview-row">
+                  <span className="preview-key">SKU</span>
+                  <span className="sku-preview">{ooSKU}</span>
+                </div>
+              )}
+              {ooCert && (
+                <div className="preview-row">
+                  <span className="preview-key">Link</span>
+                  <span className="font-mono text-xs text-muted truncate">{(CERT_LINKS[grader]||CERT_LINKS.Other)(ooCert)}</span>
+                </div>
+              )}
             </div>
           )}
 
-          <button className="btn-green" disabled={ooCreating||!ooReady||!workerUrl} onClick={createOne} style={{width:'100%',padding:'10px',fontSize:12}}>
-            {ooCreating ? 'CREATING IN SHOPIFY…' : 'CREATE DRAFT IN SHOPIFY →'}
+          <button
+            className="btn-success w-full btn-lg"
+            disabled={ooCreating||!ooReady||!workerUrl}
+            onClick={createOne}
+          >
+            {ooCreating?'Creating…':'Create draft in Shopify'}
           </button>
 
-          {ooResult && !ooResult.success && (
-            <div style={{background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)',borderRadius:4,padding:'8px 12px'}}>
-              <div className="red" style={{fontWeight:700,fontSize:11,marginBottom:3}}>✗ ERROR</div>
-              <div className="red" style={{fontSize:11}}>{ooResult.error}</div>
+          {ooResult&&!ooResult.success && (
+            <div className="banner banner-error">
+              <div className="font-medium text-sm" style={{marginBottom:2}}>Failed</div>
+              <div className="text-sm">{ooResult.error}</div>
             </div>
           )}
         </div>
