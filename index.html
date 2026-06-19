@@ -501,13 +501,13 @@ function App() {
     r.onload = e => {
       const rows     = parseCSV(e.target.result);
       const certKey  = Object.keys(rows[0]||{}).find(k=>/cert/i.test(k));
-      const descKey  = Object.keys(rows[0]||{}).find(k=>/desc/i.test(k));
-      const gradeKey = Object.keys(rows[0]||{}).find(k=>/grade/i.test(k));
-      if (!certKey) { alert('No Cert # column found — is this a PSA order CSV?'); return; }
+      const descKey  = Object.keys(rows[0]||{}).find(k=>/desc/i.test(k)) || Object.keys(rows[0]||{}).find(k=>/^item$/i.test(k));
+      const gradeKey = Object.keys(rows[0]||{}).find(k=>/^grade$/i.test(k));
+      if (!certKey) { alert('No Cert # column found — is this a PSA order CSV or My Collection CSV?'); return; }
       setCsvCards(rows.map((r,i)=>({
         id: i,
         certNum:  String(r[certKey]||'').replace(/'/g,'').trim(),
-        desc:     String(r[descKey]||r['Description']||'').trim(),
+        desc:     String(r[descKey]||r['Description']||r['Item']||'').trim(),
         gradeRaw: String(r[gradeKey]||r['Grade']||'').trim(),
         checked: false, cost: '', price: '',
         status: 'idle', error: null, shopifyId: null,
