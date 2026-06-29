@@ -537,6 +537,9 @@ function App() {
     }));
   };
 
+  // Helpers
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
   // Batch push
   const pushSelected = async () => {
     if (!workerUrl) { setShowSettings(true); return; }
@@ -572,6 +575,8 @@ function App() {
       }
 
       const result = await pushToShopify(spec, workerUrl);
+      // Pause between cards to avoid PSA rate limiting
+      await sleep(1500);
       setCsvCards(p=>p.map(c=>c.id===card.id?{
         ...c, status: result.success?'pushed':'failed',
         error: result.error||null, shopifyId: result.productId||null,
