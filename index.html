@@ -404,6 +404,389 @@ async function pushToShopify(spec, workerUrl) {
   } catch(e) { return { success: false, error: String(e) }; }
 }
 
+
+// ─── SGC Filename Parser ──────────────────────────────────────────────────────
+function parseSGCFilename(path) {
+  const fname = path.split('/').pop().replace(/\.jpg$/i,'').replace(/\.jpeg$/i,'');
+  const parts = fname.split('__');
+  if (parts.length < 3) return null;
+
+  const cardInfo  = parts[1];
+  const gradeAuth = parts[2];
+  const isFront   = /Front/i.test(gradeAuth);
+  const isBack    = /Back/i.test(gradeAuth);
+
+  const gradeMatch = gradeAuth.match(/SGC-Grade-([^_]+)/);
+  const gradeRaw   = gradeMatch ? gradeMatch[1] : '';
+  const grade      = gradeRaw.replace(/pt/g, '.').replace(/p/g, '.');
+
+  const authMatch = gradeAuth.match(/Auth-(\d+)/);
+  const certNum   = authMatch ? authMatch[1] : '';
+
+  const tokens = cardInfo.split('_');
+  const year   = (tokens[0] && /^\d{4}$/.test(tokens[0])) ? tokens[0] : '';
+  const rest   = year ? tokens.slice(1) : tokens;
+
+  let cardNum = '', cardNumIdx = -1;
+  for (let i = 1; i < rest.length; i++) {
+    if (/^\d+$/.test(rest[i])) { cardNum = rest[i]; cardNumIdx = i; break; }
+  }
+
+  const tc = s => s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  const setName  = cardNumIdx > 0 ? tc(rest.slice(0, cardNumIdx).join(' ')) : tc(rest.join(' '));
+  const playerVar = cardNumIdx >= 0 ? tc(rest.slice(cardNumIdx + 1).join(' ')) : '';
+
+  return { year, set: setName, cardNumber: cardNum, playerVariation: playerVar, grade, certNum, isFront, isBack };
+}
+
+function parseSGCZip(files) {
+  // files: array of File objects from the zip
+  const cardMap = {};
+
+  for (const file of files) {
+    const parsed = parseSGCFilename(file.name || file.webkitRelativePath || '');
+    if (!parsed || !parsed.certNum) continue;
+    const key = parsed.certNum;
+    if (!cardMap[key]) {
+      cardMap[key] = {
+        certNum:       parsed.certNum,
+        year:          parsed.year,
+        set:           parsed.set,
+        cardNumber:    parsed.cardNumber,
+        playerVariation: parsed.playerVariation,
+        grade:         parsed.grade,
+        frontFile:     null,
+        backFile:      null,
+      };
+    }
+    if (parsed.isFront) cardMap[key].frontFile = file;
+    if (parsed.isBack)  cardMap[key].backFile  = file;
+  }
+
+  return Object.values(cardMap);
+}
+
+// ─── SGC Tab Component ────────────────────────────────────────────────────────
+function SGCTab({ workerUrl, setShowSettings }) {
+  const [sgcCards,  setSgcCards]  = React.useState(null);
+  const [bulkCost,  setBulkCost]  = React.useState('');
+  const [bulkPrice, setBulkPrice] = React.useState('');
+  const [pushing,   setPushing]   = React.useState(false);
+  const [dragging,  setDragging]  = React.useState(false);
+  const fileRef = React.useRef();
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  const loadZip = async (file) => {
+    if (!file || !file.name.endsWith('.zip')) { alert('Please upload a .zip file from SGC'); return; }
+    // Use JSZip if available, otherwise read file entries via webkitRelativePath
+    // We'll use the File API to read the zip and extract file list
+    try {
+      const JSZip = await loadJSZip();
+      const zip   = await JSZip.loadAsync(file);
+      const files = [];
+      for (const [path, entry] of Object.entries(zip.files)) {
+        if (entry.dir || !/\.(jpg|jpeg)$/i.test(path)) continue;
+        const blob = await entry.async('blob');
+        const f    = new File([blob], path.split('/').pop(), { type: 'image/jpeg' });
+        f._zipPath = path;
+        files.push(f);
+      }
+      const cards = parseSGCZip(files.map(f => ({ ...f, name: f._zipPath || f.name, _file: f })));
+      // Re-attach file references
+      const certToFiles = {};
+      for (const f of files) {
+        const parsed = parseSGCFilename(f._zipPath || f.name);
+        if (!parsed) continue;
+        if (!certToFiles[parsed.certNum]) certToFiles[parsed.certNum] = {};
+        if (parsed.isFront) certToFiles[parsed.certNum].front = f;
+        if (parsed.isBack)  certToFiles[parsed.certNum].back  = f;
+      }
+      setSgcCards(cards.map((c, i) => ({
+        ...c,
+        id:       i,
+        frontFile: certToFiles[c.certNum]?.front || null,
+        backFile:  certToFiles[c.certNum]?.back  || null,
+        cost:  '',
+        price: '',
+        checked:  false,
+        status:   'idle',
+        error:    null,
+        shopifyId:null,
+      })));
+    } catch(e) {
+      alert('Could not read zip file: ' + e.message);
+    }
+  };
+
+  const loadJSZip = () => new Promise((resolve, reject) => {
+    if (window.JSZip) { resolve(window.JSZip); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+
+  const onDrop = e => { e.preventDefault(); setDragging(false); loadZip(e.dataTransfer.files[0]); };
+
+  const idleCards    = sgcCards?.filter(c => c.status === 'idle') || [];
+  const checkedCount = sgcCards?.filter(c => c.checked && c.status === 'idle').length || 0;
+  const pushedCount  = sgcCards?.filter(c => c.status === 'pushed').length || 0;
+  const allChecked   = idleCards.length > 0 && idleCards.every(c => c.checked);
+
+  const toggleAll = () => setSgcCards(p => p.map(c => c.status==='idle' ? {...c, checked:!allChecked} : c));
+  const clearSel  = () => setSgcCards(p => p.map(c => c.status==='idle' ? {...c, checked:false} : c));
+  const toggleRow = i  => { if(sgcCards[i].status!=='idle') return; setSgcCards(p => p.map((c,j) => j!==i ? c : {...c, checked:!c.checked})); };
+  const setField  = (i, field, val) => setSgcCards(p => p.map((c,j) => j!==i ? c : {...c, [field]:val}));
+
+  const applyBulk = () => {
+    if (!bulkCost && !bulkPrice) return;
+    setSgcCards(p => p.map(c => {
+      if (!c.checked || c.status !== 'idle') return c;
+      return { ...c, ...(bulkCost ? {cost:bulkCost} : {}), ...(bulkPrice ? {price:bulkPrice} : {}) };
+    }));
+  };
+
+  // Upload image file to Worker, get back a Shopify-ready URL
+  const uploadImageFile = async (file) => {
+    if (!file) return null;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res  = await fetch(`${workerUrl}/upload/image`, { method: 'POST', body: formData });
+      const data = await res.json();
+      return data.url || null;
+    } catch(e) { return null; }
+  };
+
+  const pushSelected = async () => {
+    if (!workerUrl) { setShowSettings(true); return; }
+    const todo = sgcCards.filter(c => c.checked && c.status === 'idle');
+    if (!todo.length) return;
+    setPushing(true);
+
+    const TODAY = new Date().toISOString().split('T')[0];
+
+    for (const card of todo) {
+      setSgcCards(p => p.map(c => c.id===card.id ? {...c, status:'pushing'} : c));
+
+      // Upload images directly from zip files
+      let imageUrl = null, imageUrlBack = null;
+      if (card.frontFile) {
+        const fd = new FormData();
+        fd.append('file', card.frontFile, `sgc-${card.certNum}-front.jpg`);
+        try {
+          const r = await fetch(`${workerUrl}/upload/image`, { method:'POST', body: fd });
+          const d = await r.json();
+          imageUrl = d.url || null;
+        } catch(e) {}
+      }
+      if (card.backFile) {
+        const fd = new FormData();
+        fd.append('file', card.backFile, `sgc-${card.certNum}-back.jpg`);
+        try {
+          const r = await fetch(`${workerUrl}/upload/image`, { method:'POST', body: fd });
+          const d = await r.json();
+          imageUrlBack = d.url || null;
+        } catch(e) {}
+      }
+
+      // Detect sport from player/set name
+      const descForDetection = `${card.set} ${card.playerVariation}`.toUpperCase();
+      let category = 'OTHER';
+      if (/BASEBALL|TOPPS|BOWMAN|FLEER|DONRUSS/.test(descForDetection)) category = 'BASEBALL';
+      else if (/BASKETBALL|HOOPS|PRIZM/.test(descForDetection)) category = 'BASKETBALL';
+      else if (/FOOTBALL|NFL/.test(descForDetection)) category = 'FOOTBALL';
+      else if (/HOCKEY|NHL/.test(descForDetection)) category = 'HOCKEY';
+      else if (/UFC|MMA|KNOCKOUT/.test(descForDetection)) category = 'ENTERTAINMENT';
+      else if (/POKEMON|TCG/.test(descForDetection)) category = 'POKEMON';
+
+      const spec = {
+        certNumber:    card.certNum,
+        year:          card.year,
+        set:           card.set,
+        playerName:    card.playerVariation,
+        variation:     '',
+        cardNumber:    card.cardNumber,
+        grader:        'SGC',
+        grade:         card.grade,
+        isDualCert:    false,
+        autographGrade:null,
+        category,
+        cost:          card.cost || '100',
+        dateAcquired:  TODAY,
+        imageUrl,
+        imageUrlBack,
+        price:         card.price || '0',
+      };
+
+      const res    = await fetch(`${workerUrl}/shopify/product`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(spec),
+      });
+      const result = await res.json();
+
+      setSgcCards(p => p.map(c => c.id===card.id ? {
+        ...c,
+        status:    result.ok ? 'pushed' : 'failed',
+        error:     result.ok ? null : JSON.stringify(result.errors || result.error),
+        shopifyId: result.product?.id || null,
+      } : c));
+
+      await sleep(1000);
+    }
+    setPushing(false);
+  };
+
+  const gradeClass = n => {
+    const v = parseFloat(n);
+    if (v === 10) return 'grade-10';
+    if (v >= 9)   return 'grade-9';
+    if (v >= 7)   return 'grade-8';
+    return 'grade-lo';
+  };
+
+  const makeSKU = cost => {
+    if (!cost) return '';
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}${parseInt(cost)||0}`;
+  };
+
+  return (
+    <div className="flex-col gap-4">
+      {!sgcCards && (
+        <div style={{maxWidth:540, margin:'20px auto', width:'100%'}}>
+          <div
+            className={`dropzone${dragging?' drag':''}`}
+            onDragOver={e=>{e.preventDefault();setDragging(true)}}
+            onDragLeave={()=>setDragging(false)}
+            onDrop={onDrop}
+            onClick={()=>fileRef.current.click()}
+          >
+            <input ref={fileRef} type="file" accept=".zip" onChange={e=>loadZip(e.target.files[0])}/>
+            <div style={{fontSize:28, marginBottom:12, color:dragging?'#5b9cf6':'#2a2e38'}}>↑</div>
+            <div className="font-medium" style={{marginBottom:6, color:dragging?'#5b9cf6':'#8b8f9e'}}>Drop your SGC zip file here</div>
+            <div className="text-xs text-muted">Download from gosgc.com → Orders → your order → Download Images</div>
+          </div>
+        </div>
+      )}
+
+      {sgcCards && (<>
+        {/* Toolbar */}
+        <div className="card card-body flex items-center gap-3" style={{flexWrap:'wrap'}}>
+          <button className="btn-ghost btn-sm" onClick={toggleAll}>
+            {allChecked && idleCards.length > 0 ? 'Deselect all' : 'Select all'}
+          </button>
+          {checkedCount > 0 && <button className="btn-ghost btn-sm" onClick={clearSel}>Clear</button>}
+          <div className="flex gap-3 text-sm" style={{marginLeft:4}}>
+            {checkedCount > 0 && <span className="text-accent">{checkedCount} selected</span>}
+            {pushedCount > 0  && <span className="text-green">{pushedCount} pushed</span>}
+            <span className="text-muted">{sgcCards.length} total</span>
+          </div>
+          <div className="flex-1"/>
+          <button className="btn-ghost btn-sm" onClick={()=>setSgcCards(null)}>Load new file</button>
+        </div>
+
+        {/* Bulk controls */}
+        <div className="card card-body flex items-end gap-3" style={{flexWrap:'wrap'}}>
+          <div>
+            <label className="field-label">Bulk cost</label>
+            <input type="number" step="1" min="0" value={bulkCost} onChange={e=>setBulkCost(e.target.value)} placeholder="100" style={{width:100}}/>
+          </div>
+          <div>
+            <label className="field-label">Bulk price</label>
+            <input type="number" step="0.01" min="0" value={bulkPrice} onChange={e=>setBulkPrice(e.target.value)} placeholder="0.00" style={{width:100}}/>
+          </div>
+          <button className="btn-ghost btn-sm" onClick={applyBulk} disabled={(!bulkCost&&!bulkPrice)||checkedCount===0}>
+            Apply to selected
+          </button>
+          <div className="flex-1"/>
+          <button className="btn-success btn-lg" disabled={pushing||checkedCount===0||!workerUrl} onClick={pushSelected}>
+            {pushing ? 'Pushing…' : `Push ${checkedCount} to Shopify`}
+          </button>
+        </div>
+
+        {/* Card list */}
+        <div className="card" style={{overflow:'hidden'}}>
+          <div className="col-header-row">
+            <div style={{width:16, flexShrink:0}}/>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90}}>Cert #</div>
+            <div className="text-xs text-muted flex-1">Card</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:50, textAlign:'center'}}>Grade</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:40, textAlign:'center'}}>Imgs</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90, textAlign:'right'}}>Cost</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:90, textAlign:'right'}}>Price</div>
+            <div className="text-xs text-muted flex-shrink-0" style={{width:116, textAlign:'right'}}>SKU</div>
+            <div style={{width:52, flexShrink:0}}/>
+          </div>
+
+          {sgcCards.map((card, i) => {
+            const isPushed = card.status === 'pushed';
+            const isFailed = card.status === 'failed';
+            const isPush   = card.status === 'pushing';
+            const isIdle   = card.status === 'idle';
+            const sku      = card.cost ? makeSKU(card.cost) : '';
+            const imgCount = (card.frontFile ? 1 : 0) + (card.backFile ? 1 : 0);
+
+            return (
+              <div
+                key={card.id}
+                className={`card-row${card.checked?' selected':''}${isPushed?' pushed':''}${isFailed?' failed':''}${isPush?' pushing':''}`}
+                onClick={()=>toggleRow(i)}
+              >
+                <input type="checkbox" checked={card.checked||isPushed} onChange={()=>toggleRow(i)} onClick={e=>e.stopPropagation()} disabled={!isIdle}/>
+
+                <span className="font-mono text-xs text-muted flex-shrink-0" style={{width:90}}>{card.certNum}</span>
+
+                <span className="text-sm flex-1 min-w-0 truncate" style={{color:card.checked||isPushed?'#c8cad2':'#6b7280'}}>
+                  {[card.year, card.set, card.playerVariation, card.cardNumber?`#${card.cardNumber}`:null].filter(Boolean).join(' ')}
+                  {isPushed && card.shopifyId && <span className="text-green font-mono" style={{fontSize:10,display:'block',marginTop:1}}>{card.shopifyId}</span>}
+                  {isFailed && <span className="text-red" style={{fontSize:10,display:'block',marginTop:1}}>{card.error}</span>}
+                  {isPush   && <span className="text-accent" style={{fontSize:10,display:'block',marginTop:1}}>Creating…</span>}
+                </span>
+
+                <div style={{width:50, textAlign:'center', flexShrink:0}}>
+                  <span className={`grade-badge ${gradeClass(card.grade)}`}>{card.grade}</span>
+                </div>
+
+                <div style={{width:40, textAlign:'center', flexShrink:0}}>
+                  <span className="text-xs" style={{color:imgCount===2?'#4ade80':imgCount===1?'#fbbf24':'#5c6070'}}>{imgCount}/2</span>
+                </div>
+
+                <div style={{width:90, flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  {isIdle && (
+                    <input type="number" step="1" min="0" value={card.cost} onChange={e=>setField(i,'cost',e.target.value)}
+                      placeholder="100" style={{textAlign:'right',height:28,fontSize:12,padding:'0 8px'}}/>
+                  )}
+                </div>
+
+                <div style={{width:90, flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                  {isIdle && (
+                    <input type="number" step="0.01" min="0" value={card.price} onChange={e=>setField(i,'price',e.target.value)}
+                      placeholder="0.00" style={{textAlign:'right',height:28,fontSize:12,padding:'0 8px'}}/>
+                  )}
+                </div>
+
+                <div style={{width:116, textAlign:'right', flexShrink:0}}>
+                  {sku && <span className="sku-preview">{sku}</span>}
+                </div>
+
+                <div style={{width:52, flexShrink:0, textAlign:'right'}}>
+                  {isPushed && <span className="status-badge status-done">Done</span>}
+                  {isFailed && <span className="status-badge status-fail">Fail</span>}
+                  {isPush   && <span className="status-badge status-push">…</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ onClose, onSave, defaults }) {
   const [workerUrl, setWorkerUrl] = useState(defaults.workerUrl || '');
@@ -664,7 +1047,7 @@ function App() {
 
     {/* Tabs */}
     <div className="tab-nav">
-      {[['batch','PSA Order'],['oneoff','Quick Add']].map(([t,l])=>(
+      {[['batch','PSA Order'],['sgc','SGC Order'],['oneoff','Quick Add']].map(([t,l])=>(
         <button key={t} className={`tab-btn${tab===t?' active':''}`} onClick={()=>setTab(t)}>{l}</button>
       ))}
     </div>
@@ -825,6 +1208,11 @@ function App() {
         </div>
       </>)}
     </div>)}
+
+    {/* ═══ SGC TAB ═══ */}
+    {tab==='sgc' && (
+    <SGCTab workerUrl={workerUrl} setShowSettings={setShowSettings} />
+    )}
 
     {/* ═══ QUICK ADD TAB ═══ */}
     {tab==='oneoff' && (
